@@ -161,7 +161,6 @@
   %     E = mc^2 \zpunct{,}
   %   \end{equation}
   % ----------------------------------------------------------------------------
-
   \newcommand{\zmath@currentpunct}{}
 
   \def\tagform@#1{%
@@ -171,39 +170,6 @@
 
   \NewDocumentCommand \zpunct { m }
     { \gdef\zmath@currentpunct{#1\space} }
-
-  % ----------------------------------------------------------------------------
-  % \zcond *[expr]{condition}
-  %   Typesets an "evaluated at" condition, placing the condition as a
-  %   subscript on a vertical bar.
-  %
-  %   No star:  plain \rvert with subscript; no left delimiter.
-  %             Use when the preceding expression already has natural
-  %             delimiters or when compactness is preferred.
-  %   Star:     \left. ... \right\rvert pair; the optional expression is
-  %             wrapped in auto-sized delimiters so the bar height matches
-  %             the content.
-  %
-  %   ARGUMENTS
-  %     star       wraps the optional expression in \left. \right\rvert
-  %     [expr]     the expression to the left of the bar (optional)
-  %     {cond}     the subscript condition (mandatory)
-  %
-  %   EXAMPLES
-  %     \zcond{x=0}                  →  |_{x=0}
-  %     \zcond[f(x)]{x=0}            →  f(x)|_{x=0}
-  %     \zcond*[\frac{df}{dx}]{x=0}  →  \left. df/dx \right|_{x=0}
-  % ----------------------------------------------------------------------------
-
-  \NewDocumentCommand \zcond { s O{} m }
-    {
-      \ensuremath
-        {
-          \IfBooleanTF {#1}
-            { \left. #2 \right\rvert_{ \zscale{#3} } }
-            { #2 \rvert_{ \zscale{#3} } }
-        }
-    }
 
 % ==============================================================================
 
@@ -223,7 +189,6 @@
   % via \exp_args:NNf so the fp engine receives the literal number, not the
   % macro token.
   % ============================================================================
-
   \exp_args:NNf \fp_const:Nn \c_zmath_scale_fp { \zmath@scale }
 
   % ============================================================================
@@ -253,7 +218,6 @@
   % ============================================================================
 
   % --- Inter-glyph kerning ----------------------------------------------------
-
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_sep_h               { \zmath@int@cluster@sep@h               }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_dots_left_h         { \zmath@int@cluster@dots@left@h         }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_dots_right_h        { \zmath@int@cluster@dots@right@h        }
@@ -263,14 +227,12 @@
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_cluster_dots_right_h { \zmath@int@inline@cluster@dots@right@h }
 
   % --- Single integral — side limits (display, no star) ----------------------
-
   \exp_args:NNf \dim_const:Nn    \c_zmath_int_single_side_low_v    { \zmath@int@single@side@low@v }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_side_low_h    { \zmath@int@single@side@low@h }
   \exp_args:NNf \dim_const:Nn    \c_zmath_int_single_side_up_v     { \zmath@int@single@side@up@v  }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_side_up_h     { \zmath@int@single@side@up@h  }
 
   % --- Stacked limits (display, star) -----------------------------------------
-
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_stack_low_h   { \zmath@int@single@stack@low@h  }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_stack_up_h    { \zmath@int@single@stack@up@h   }
 
@@ -281,17 +243,14 @@
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_oint_stack_up_h      { \zmath@int@oint@stack@up@h     }
 
   % --- Cluster / oint — side limits (display, no star) -----------------------
-
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_disp_side_low_h      { \zmath@int@disp@side@low@h }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_disp_side_up_h       { \zmath@int@disp@side@up@h  }
 
   % --- Side limits (inline / text mode) ---------------------------------------
-
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_side_low_h    { \zmath@int@inline@side@low@h }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_side_up_h     { \zmath@int@inline@side@up@h  }
 
   % --- Stacked limits (inline, star) ------------------------------------------
-
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_stack_low_h   { \zmath@int@inline@stack@low@h }
   \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_stack_up_h    { \zmath@int@inline@stack@up@h  }
 
@@ -312,7 +271,6 @@
   %   \l__zfrac_num_tl           token list holding the resolved numerator
   %   \l__zfrac_den_tl           token list holding the resolved denominator
   % ============================================================================
-
   \bool_new:N \l__zfrac_math_bool
   \bool_new:N \l__zfrac_num_paren_bool
   \bool_new:N \l__zfrac_den_paren_bool
@@ -323,7 +281,6 @@
   % ============================================================================
   % SCRATCH STORAGE
   % ============================================================================
-
   \tl_new:N \l__zmath_base_tl
 
   % ============================================================================
@@ -336,7 +293,6 @@
   %   unchanged otherwise.  Used to honour per-argument star flags in \zint
   %   and \zscript.
   % ----------------------------------------------------------------------------
-
   \cs_new:Nn \zmath_maybe_scale:nn
     { \bool_if:nTF {#1} { \zscale{#2} } {#2} }
 
@@ -345,7 +301,6 @@
   %   Wraps #1 in parentheses appropriate to the ambient mode: \left( \right)
   %   in math mode, plain () in text mode.
   % ----------------------------------------------------------------------------
-
   \cs_new:Npn \__zfrac_paren:n #1
     {
       \bool_if:NTF \l__zfrac_math_bool
@@ -359,7 +314,6 @@
   %   that nested \zfrac calls inside a text-mode argument still see text mode
   %   rather than inadvertently entering math mode.
   % ----------------------------------------------------------------------------
-
   \cs_new:Npn \__zfrac_ctx:n #1
     {
       \bool_if:NTF \l__zfrac_math_bool
@@ -373,7 +327,6 @@
   %   is wrapped in \__zfrac_paren:n; otherwise it is passed through
   %   \__zfrac_ctx:n unchanged.
   % ----------------------------------------------------------------------------
-
   \cs_new:Npn \__zfrac_arg:Nn #1 #2
     {
       \bool_if:NTF #1
@@ -390,7 +343,6 @@
   %   #1  first star boolean  (selects \nicefrac or slash when true)
   %   #2  second star boolean (selects slash notation when both stars true)
   % ----------------------------------------------------------------------------
-
   \cs_new:Npn \__zfrac_render:nn #1 #2
     {
       \bool_if:NF \l__zfrac_den_present_bool
@@ -451,7 +403,6 @@
   %   greedily takes {d} as #4, so #4 must be re-routed to the denominator.
   %   Single-argument forms are detected by all remaining slots being \NoValue.
   % ----------------------------------------------------------------------------
-
   \cs_new_protected:Npn \__zfrac_parse:nnnnnn #1 #2 #3 #4 #5 #6
     {
       \IfNoValueTF {#3}
@@ -514,7 +465,6 @@
   % ----------------------------------------------------------------------------
   % \zmath_render_cluster:n  (see \zint)
   % ----------------------------------------------------------------------------
-
   \cs_new:Nn \zmath_render_cluster:n
     {
       \tl_set:Nn \l__zmath_base_tl {#1}
@@ -552,7 +502,6 @@
   % ----------------------------------------------------------------------------
   % \zmath_single_integral:nnnn  (see \zint)
   % ----------------------------------------------------------------------------
-
   \cs_new:Nn \zmath_single_integral:nnnn
     {
       \mathop
@@ -590,7 +539,6 @@
   %     oint + side      →  \mathop{\ointop}\nolimits    (disp_side kerns)
   %     oint + stack     →  \mathop{\ointop}\limits      (oint_stack kerns)
   % ----------------------------------------------------------------------------
-
   \cs_new:Nn \zmath_int_display:nnnnnn
     {
       \regex_match:nnTF { \A 1 \Z } {#6}
@@ -633,7 +581,6 @@
   %   Stacked mode (star):   \mathop{...}\limits with invisible vertical struts
   %                          and horizontal nudges to prevent cramped spacing.
   % ----------------------------------------------------------------------------
-
   \cs_new:Nn \zmath_int_inline:nnnnnn
     {
       \bool_if:nTF {#5}
@@ -672,7 +619,6 @@
   %   Emits #1 copies of a slightly enlarged prime glyph.  Used by \zprime to
   %   build single, double, or n-fold prime accents and superscripts uniformly.
   % ----------------------------------------------------------------------------
-
   \cs_new:Npn \__zprime_make:n #1
     {
       \int_step_inline:nn {#1} { \text{\scalebox{1.1}{$\prime$}} }
@@ -691,7 +637,6 @@
   %   \zscale{x^2}            % uses default factor (0.6)
   %   \zscale[0.8]{\nabla f}  % explicit factor 0.8
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zscale { O{} m }
     {
       \scalebox
@@ -709,7 +654,6 @@
   %   \zscript[i=1][n]{A}[x][y]   % pre-sub i=1, pre-sup n, post-sub x, post-sup y
   %   \zscript*[k]{F}[j]          % pre-sub k scaled, post-sub j unscaled
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zscript { s O{} s O{} m s O{} s O{} }
     {
       \ensuremath
@@ -740,13 +684,61 @@
   %   f\zarg{x}        →  f(x)   at arg-scale size, lightly kerned
   %   f\zarg{x^2 + 1}  →  f(x²+1)
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zarg { m }
     {
       \scalebox{\zmath@arg@scale}
         {
           \ensuremath
             { \mkern \zmath@arg@kern \left( #1 \right) }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zcond * * * * [expr]{condition}
+  %   Typesets an "evaluated at" vertical condition bar. If an expression is
+  %   supplied, it defaults to dynamic auto-scaling unless manual star overrides
+  %   are explicitly provided.
+  %
+  %   BAR SIZING (stars)
+  %     No Stars      standard script-size | (or auto \left/\right pair)
+  %     \zcond* \big|   (forces fixed size, bypasses \zscale)
+  %     \zcond** \Big|   (forces fixed size, bypasses \zscale)
+  %     \zcond*** \bigg|  (forces fixed size, bypasses \zscale)
+  %     \zcond**** \Bigg|  (forces fixed size, bypasses \zscale)
+  %
+  %   ARGUMENTS
+  %     #1 - #4       individual star switches mapping to explicit sizing steps
+  %     [expr]        the expression to the left of the bar (optional)
+  %     {cond}        the subscript condition (mandatory)
+  %
+  %   EXAMPLES
+  %     \zcond{x=0}                  →   |_{x=0} (scaled)
+  %     \zcond[f(x)]{x=0}            →   \left. f(x) \right|_{x=0} (scaled)
+  %     \zcond*[\frac{df}{dx}]{x=0}  →   df/dx \big|_{x=0} (unscaled)
+  % ----------------------------------------------------------------------------
+  \NewDocumentCommand \zcond { s s s s O{} m }
+    {
+      \ensuremath
+        {
+          \bool_if:nTF {#4}
+            { #5 \Bigg | \sb {#6} }
+            {
+              \bool_if:nTF {#3}
+                { #5 \bigg | \sb {#6} }
+                {
+                  \bool_if:nTF {#2}
+                    { #5 \Big | \sb {#6} }
+                    {
+                      \bool_if:nTF {#1}
+                        { #5 \big | \sb {#6} }
+                        {
+                          \tl_if_blank:nTF {#5}
+                            { | \sb { \zscale{#6} } }
+                            { \left. #5 \right | \sb { \zscale{#6} } }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -770,7 +762,6 @@
   %     \zdiff*[2]{x}   →  d²/dx²   (\frac form)
   %     \zdiff**[2]{x}  →  d²/dx²   (\nicefrac form)
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zdiff { s t* O{} m }
     {
       \ensuremath
@@ -819,7 +810,6 @@
   %     \zprime*{f}            →  f' in superscript
   %     \zprime*[2][0.1ex]{A}  →  A'' raised by 0.1ex
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zprime { s O{1} O{} m }
     {
       \IfBooleanTF {#1}
@@ -849,7 +839,6 @@
   %
   %   \zvec{u}   →   u̲
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zvec { m }
     { \ensuremath { \underline{#1} } }
 
@@ -860,7 +849,6 @@
   %
   %   \zmat{A}   →   A̲̲
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zmat { m }
     { \ensuremath { \underline{\underline{#1}} } }
 
@@ -898,7 +886,6 @@
   %     $\zfrac{\alpha}[\lambda]$        →  \frac{\alpha}{\left(\lambda\right)}
   %     $\zfrac**{1}[\zfrac[\mu]{\nu}]$  →  1/\left((\mu)/\nu\right)
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zfrac { s s o g o g }
     {
       \bool_set:Nn \l__zfrac_math_bool { \mode_if_math_p: }
@@ -951,7 +938,6 @@
   %
   %   The placement star and the per-limit scaling stars are fully independent.
   % ----------------------------------------------------------------------------
-
   \NewDocumentCommand \zint { s O{} s O{} s O{1} }
     {
       \mode_if_math:TF
