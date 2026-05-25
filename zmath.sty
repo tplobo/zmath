@@ -28,12 +28,16 @@
 % Required packages
 % ------------------------------------------------------------------------------
 
-\RequirePackage{amsmath}
 \RequirePackage{graphicx}
+\RequirePackage{amsmath}
 \RequirePackage{unicode-math}
 \RequirePackage{nicefrac}
 \RequirePackage{accents}
 \RequirePackage{xkeyval}
+
+% ------------------------------------------------------------------------------
+% Configure packages
+% ------------------------------------------------------------------------------
 
 % The integral glyphs are prescribed so that \intop and \ointop render with
 % XITS glyphs. The base math font is left to the user; recommended:
@@ -85,6 +89,13 @@
 % ARG SCALE (\zarg)
 %   arg-scale                scale factor applied by \zarg  (default: 0.9)
 %   arg-kern                 horizontal kern before \zarg   (default: -1mu)
+% LINE STACKING (\zline)
+%   line-depth               vertical distance from symbol bottom to first line
+%                            (default: 3pt)
+%   line-thickness           thickness of each individual underline
+%                            (default: 0.4pt)
+%   line-sep                 clear gap distance between consecutive lines
+%                            (default: 1.2pt)
 % ==============================================================================
 
 \newcommand{\zmath@scale}{0.6}
@@ -115,6 +126,9 @@
 \newcommand{\zmath@int@inline@stack@up@v}{0.8ex}
 \newcommand{\zmath@arg@scale}{0.9}
 \newcommand{\zmath@arg@kern}{-1mu}
+\newcommand{\zmath@line@depth}{2pt}
+\newcommand{\zmath@line@thickness}{0.4pt}
+\newcommand{\zmath@line@sep}{0.7pt}
 
 \define@key{zmath}{scale}              {\renewcommand{\zmath@scale}{#1}}
 \define@key{zmath}{int-sep}            {\renewcommand{\zmath@int@cluster@sep@h}{#1}}
@@ -143,6 +157,9 @@
 \define@key{zmath}{int-inline-stack-up-v} {\renewcommand{\zmath@int@inline@stack@up@v}{#1}}
 \define@key{zmath}{arg-scale}          {\renewcommand{\zmath@arg@scale}{#1}}
 \define@key{zmath}{arg-kern}           {\renewcommand{\zmath@arg@kern}{#1}}
+\define@key{zmath}{line-depth}         {\renewcommand{\zmath@line@depth}{#1}}
+\define@key{zmath}{line-thickness}     {\renewcommand{\zmath@line@thickness}{#1}}
+\define@key{zmath}{line-sep}           {\renewcommand{\zmath@line@sep}{#1}}
 
 \ProcessOptionsX*<zmath>
 
@@ -190,6 +207,23 @@
   % macro token.
   % ============================================================================
   \exp_args:NNf \fp_const:Nn \c_zmath_scale_fp { \zmath@scale }
+
+  % ============================================================================
+  % UNDERLINE STACKING CONSTANTS
+  % ----------------------------------------------------------------------------
+  % All constant names follow the pattern:
+  %   \c_zmath_line_<dim>
+  %
+  %   <dim>       depth       vertical offset below text nucleus box
+  %               thickness   rule height of each individual line
+  %               sep         vertical spacing gap between consecutive lines
+  %
+  % Each constant is initialised from its corresponding package option macro so
+  % that load-time overrides (e.g. line-depth=4pt) take effect automatically.
+  % ============================================================================
+  \exp_args:NNf \dim_const:Nn \c_zmath_line_depth_dim     { \zmath@line@depth     }
+  \exp_args:NNf \dim_const:Nn \c_zmath_line_thickness_dim { \zmath@line@thickness }
+  \exp_args:NNf \dim_const:Nn \c_zmath_line_sep_dim       { \zmath@line@sep       }
 
   % ============================================================================
   % INTEGRAL SPACING CONSTANTS
@@ -282,6 +316,9 @@
   % SCRATCH STORAGE
   % ============================================================================
   \tl_new:N \l__zmath_base_tl
+  \box_new:N  \l__zmath_scratch_box
+  \dim_new:N  \l__zmath_scratch_dim
+  \dim_new:N  \l__zmath_sep_dim
 
   % ============================================================================
   % INTERNAL HELPERS
@@ -295,6 +332,15 @@
   % ----------------------------------------------------------------------------
   \cs_new:Nn \zmath_maybe_scale:nn
     { \bool_if:nTF {#1} { \zscale{#2} } {#2} }
+
+  % ----------------------------------------------------------------------------
+  % \zmath_append_line:n  (internal, unused — kept for future extension)
+  % ----------------------------------------------------------------------------
+  \cs_new_protected:Nn \zmath_append_line:n
+    {
+      \hrule height \c_zmath_line_thickness_dim
+      \kern \c_zmath_line_sep_dim
+    }
 
   % ----------------------------------------------------------------------------
   % \__zfrac_paren:n
@@ -645,6 +691,57 @@
     }
 
   % ----------------------------------------------------------------------------
+  % \zline [count] {symbol}
+  %   Underlines a symbol with <count> horizontal rules of controlled thickness,
+  %   depth, and inter-rule spacing.  The rule width matches the symbol exactly.
+  %   Safe in both text and math modes.
+  %
+  %   \zline{u}      — single underline
+  %   \zline[2]{A}   — double underline
+  %   \zline[3]{W}   — triple underline
+  % ----------------------------------------------------------------------------
+  \NewDocumentCommand \zline { O{1} m }
+    {
+      \leavevmode
+      \hbox_set:Nn \l__zmath_scratch_box
+        { \ensuremath{ \mathsurround=0pt #2 } }
+      \vtop
+        {
+          \offinterlineskip
+          \box_use:N \l__zmath_scratch_box
+          \kern \c_zmath_line_depth_dim
+          \int_step_inline:nn {#1}
+            {
+              \hrule
+                height \c_zmath_line_thickness_dim
+                width  \box_wd:N \l__zmath_scratch_box
+              \int_compare:nNnF {##1} = {#1}
+                { \kern \c_zmath_line_sep_dim }
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zvec{<symbol>}
+  %   Typesets a vector as an underlined symbol, matching the common
+  %   engineering convention.  Safe in both math and text mode.
+  %
+  %   \zvec{u}   →   u̲
+  % ----------------------------------------------------------------------------
+  \NewDocumentCommand \zvec { m }
+    { \ensuremath { \zline[1]{#1} } }
+
+  % ----------------------------------------------------------------------------
+  % \zmat{<symbol>}
+  %   Typesets a matrix as a doubly-underlined symbol, extending the \zvec
+  %   convention to second-order tensors.  Safe in both math and text mode.
+  %
+  %   \zmat{A}   →   A̲̲
+  % ----------------------------------------------------------------------------
+  \NewDocumentCommand \zmat { m }
+    { \ensuremath { \zline[2]{#1} } }
+
+  % ----------------------------------------------------------------------------
   % \zscript *[pre-sub] *[pre-sup] {nucleus} *[post-sub] *[post-sup]
   %   Attaches up to four scripts to a nucleus: a leading subscript and
   %   superscript (placed before the nucleus as pre-scripts) and a trailing
@@ -831,26 +928,6 @@
             {#4}
         }
     }
-
-  % ----------------------------------------------------------------------------
-  % \zvec{<symbol>}
-  %   Typesets a vector as an underlined symbol, matching the common
-  %   engineering convention.  Safe in both math and text mode.
-  %
-  %   \zvec{u}   →   u̲
-  % ----------------------------------------------------------------------------
-  \NewDocumentCommand \zvec { m }
-    { \ensuremath { \uline{#1} } }
-
-  % ----------------------------------------------------------------------------
-  % \zmat{<symbol>}
-  %   Typesets a matrix as a doubly-underlined symbol, extending the \zvec
-  %   convention to second-order tensors.  Safe in both math and text mode.
-  %
-  %   \zmat{A}   →   A̲̲
-  % ----------------------------------------------------------------------------
-  \NewDocumentCommand \zmat { m }
-    { \ensuremath { \uuline{#1} } }
 
   % ----------------------------------------------------------------------------
   % \zfrac **[num][den]
