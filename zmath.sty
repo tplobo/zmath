@@ -1,0 +1,974 @@
+% ##############################################################################
+% zmath.sty — smart math typesetting utilities
+%
+% Provides:
+%   \zscale   uniform scaling of math content
+%   \zscript  pre- and post-scripts with optional scaling
+%   \zint     configurable integral with glyph type and limit placement
+%   \zfrac    flexible fraction with configurable style and parenthesisation
+%   \zarg     scaled parenthesised function argument
+%   \zdiff    differential and derivative operator
+%   \zpunct   punctuation before equation number
+%   \zprime   prime accent or superscript
+%   \zvec     vector notation (single underline)
+%   \zmat     matrix notation (double underline)
+%   \zcond    "evaluated at" vertical bar with condition
+%
+% Dependencies:
+%   amsmath, unicode-math, graphicx, nicefrac, xkeyval, accents
+%   (expl3 and xparse are part of the LaTeX kernel since 2020)
+%
+% Licence: LPPL 1.3c
+% ##############################################################################
+
+\NeedsTeXFormat{LaTeX2e}[2020/10/01]
+\ProvidesPackage{zmath}[2025/01/01 v1.0 smart math typesetting utilities]
+
+% ------------------------------------------------------------------------------
+% Required packages
+% ------------------------------------------------------------------------------
+
+\RequirePackage{amsmath}
+\RequirePackage{graphicx}
+\RequirePackage{unicode-math}
+\RequirePackage{nicefrac}
+\RequirePackage{accents}
+\RequirePackage{xkeyval}
+
+% The integral glyphs are prescribed so that \intop and \ointop render with
+% XITS glyphs. The base math font is left to the user; recommended:
+%   \setmathfont{TeX Gyre DejaVu Math}[Scale=0.85]
+\AtBeginDocument{\setmathfont[range={"222B-"2233}]{XITS Math}}
+
+\makeatletter
+% ==============================================================================
+% PACKAGE OPTIONS
+% ------------------------------------------------------------------------------
+% All tuneable constants are exposed as key-value options so the user can
+% override defaults at load time:
+%
+%   \usepackage[scale=0.7, int-sep=-20mu, int-sep-inline=-10mu]{zmath}
+%
+% SCALE
+%   scale                    default scale factor for \zscale and starred limits
+%                            (default: 0.6)
+% INTEGRAL INTER-GLYPH KERNING
+%   int-sep                  display: spacing between consecutive \intop glyphs
+%   int-dots-left            display: kern before \cdots bridge
+%   int-dots-right           display: kern after  \cdots bridge
+%   int-sep-inline           inline:  spacing between consecutive \intop glyphs
+%   int-dots-left-inline     inline:  kern before \cdots bridge
+%   int-dots-right-inline    inline:  kern after  \cdots bridge
+% SINGLE INTEGRAL SIDE LIMITS (display, no star)
+%   int-low-v                vertical   offset of lower limit
+%   int-low-h                horizontal kern   of lower limit
+%   int-up-v                 vertical   offset of upper limit
+%   int-up-h                 horizontal kern   of upper limit
+% STACKED LIMITS — display, star
+%   int-stack-low-h          single:  horizontal nudge on lower limit
+%   int-stack-up-h           single:  horizontal nudge on upper limit
+%   int-cluster-stack-low-h  cluster: horizontal nudge on lower limit
+%   int-cluster-stack-up-h   cluster: horizontal nudge on upper limit
+%   int-oint-stack-low-h     oint:    horizontal nudge on lower limit
+%   int-oint-stack-up-h      oint:    horizontal nudge on upper limit
+% CLUSTER / OINT SIDE LIMITS (display, no star)
+%   int-disp-low-h           horizontal kern on lower limit
+%   int-disp-up-h            horizontal kern on upper limit
+% SIDE LIMITS (inline)
+%   int-inline-low-h         horizontal kern on lower limit
+%   int-inline-up-h          horizontal kern on upper limit
+% STACKED LIMITS (inline, star)
+%   int-inline-stack-low-h   horizontal nudge on lower limit
+%   int-inline-stack-up-h    horizontal nudge on upper limit
+%   int-inline-stack-low-v   strut height below glyph
+%   int-inline-stack-up-v    strut height above glyph
+% ARG SCALE (\zarg)
+%   arg-scale                scale factor applied by \zarg  (default: 0.9)
+%   arg-kern                 horizontal kern before \zarg   (default: -1mu)
+% ==============================================================================
+
+\newcommand{\zmath@scale}{0.6}
+
+\newcommand{\zmath@int@cluster@sep@h}{-22mu}
+\newcommand{\zmath@int@cluster@dots@left@h}{-20mu}
+\newcommand{\zmath@int@cluster@dots@right@h}{-10mu}
+\newcommand{\zmath@int@inline@cluster@sep@h}{-13mu}
+\newcommand{\zmath@int@inline@cluster@dots@left@h}{-10mu}
+\newcommand{\zmath@int@inline@cluster@dots@right@h}{-6mu}
+\newcommand{\zmath@int@single@side@low@v}{-2.25ex}
+\newcommand{\zmath@int@single@side@low@h}{-1mu}
+\newcommand{\zmath@int@single@side@up@v}{2.5ex}
+\newcommand{\zmath@int@single@side@up@h}{-1mu}
+\newcommand{\zmath@int@single@stack@low@h}{-24mu}
+\newcommand{\zmath@int@single@stack@up@h}{8mu}
+\newcommand{\zmath@int@cluster@stack@low@h}{-24mu}
+\newcommand{\zmath@int@cluster@stack@up@h}{8mu}
+\newcommand{\zmath@int@oint@stack@low@h}{-22mu}
+\newcommand{\zmath@int@oint@stack@up@h}{5mu}
+\newcommand{\zmath@int@disp@side@low@h}{-20mu}
+\newcommand{\zmath@int@disp@side@up@h}{-10mu}
+\newcommand{\zmath@int@inline@side@low@h}{-7mu}
+\newcommand{\zmath@int@inline@side@up@h}{-4mu}
+\newcommand{\zmath@int@inline@stack@low@h}{-13mu}
+\newcommand{\zmath@int@inline@stack@up@h}{6mu}
+\newcommand{\zmath@int@inline@stack@low@v}{0.6ex}
+\newcommand{\zmath@int@inline@stack@up@v}{0.8ex}
+\newcommand{\zmath@arg@scale}{0.9}
+\newcommand{\zmath@arg@kern}{-1mu}
+
+\define@key{zmath}{scale}              {\renewcommand{\zmath@scale}{#1}}
+\define@key{zmath}{int-sep}            {\renewcommand{\zmath@int@cluster@sep@h}{#1}}
+\define@key{zmath}{int-dots-left}      {\renewcommand{\zmath@int@cluster@dots@left@h}{#1}}
+\define@key{zmath}{int-dots-right}     {\renewcommand{\zmath@int@cluster@dots@right@h}{#1}}
+\define@key{zmath}{int-sep-inline}     {\renewcommand{\zmath@int@inline@cluster@sep@h}{#1}}
+\define@key{zmath}{int-dots-left-inline} {\renewcommand{\zmath@int@inline@cluster@dots@left@h}{#1}}
+\define@key{zmath}{int-dots-right-inline}{\renewcommand{\zmath@int@inline@cluster@dots@right@h}{#1}}
+\define@key{zmath}{int-low-v}          {\renewcommand{\zmath@int@single@side@low@v}{#1}}
+\define@key{zmath}{int-low-h}          {\renewcommand{\zmath@int@single@side@low@h}{#1}}
+\define@key{zmath}{int-up-v}           {\renewcommand{\zmath@int@single@side@up@v}{#1}}
+\define@key{zmath}{int-up-h}           {\renewcommand{\zmath@int@single@side@up@h}{#1}}
+\define@key{zmath}{int-stack-low-h}    {\renewcommand{\zmath@int@single@stack@low@h}{#1}}
+\define@key{zmath}{int-stack-up-h}     {\renewcommand{\zmath@int@single@stack@up@h}{#1}}
+\define@key{zmath}{int-cluster-stack-low-h}{\renewcommand{\zmath@int@cluster@stack@low@h}{#1}}
+\define@key{zmath}{int-cluster-stack-up-h} {\renewcommand{\zmath@int@cluster@stack@up@h}{#1}}
+\define@key{zmath}{int-oint-stack-low-h}   {\renewcommand{\zmath@int@oint@stack@low@h}{#1}}
+\define@key{zmath}{int-oint-stack-up-h}    {\renewcommand{\zmath@int@oint@stack@up@h}{#1}}
+\define@key{zmath}{int-disp-low-h}     {\renewcommand{\zmath@int@disp@side@low@h}{#1}}
+\define@key{zmath}{int-disp-up-h}      {\renewcommand{\zmath@int@disp@side@up@h}{#1}}
+\define@key{zmath}{int-inline-low-h}   {\renewcommand{\zmath@int@inline@side@low@h}{#1}}
+\define@key{zmath}{int-inline-up-h}    {\renewcommand{\zmath@int@inline@side@up@h}{#1}}
+\define@key{zmath}{int-inline-stack-low-h}{\renewcommand{\zmath@int@inline@stack@low@h}{#1}}
+\define@key{zmath}{int-inline-stack-up-h} {\renewcommand{\zmath@int@inline@stack@up@h}{#1}}
+\define@key{zmath}{int-inline-stack-low-v}{\renewcommand{\zmath@int@inline@stack@low@v}{#1}}
+\define@key{zmath}{int-inline-stack-up-v} {\renewcommand{\zmath@int@inline@stack@up@v}{#1}}
+\define@key{zmath}{arg-scale}          {\renewcommand{\zmath@arg@scale}{#1}}
+\define@key{zmath}{arg-kern}           {\renewcommand{\zmath@arg@kern}{#1}}
+
+\ProcessOptionsX*<zmath>
+
+% ==============================================================================
+% LaTeX2e INTERFACE  (\makeatletter block)
+% ==============================================================================
+
+  % ----------------------------------------------------------------------------
+  % \zpunct{<text>}
+  %   Attaches punctuation (comma, period, semicolon, etc.) immediately before
+  %   the equation number in a numbered display equation, separated from the
+  %   number by a thin space.  Has no effect on unnumbered equations.
+  %   Must be placed inside the equation environment, before \\.
+  %
+  %   \begin{equation}
+  %     E = mc^2 \zpunct{,}
+  %   \end{equation}
+  % ----------------------------------------------------------------------------
+
+  \newcommand{\zmath@currentpunct}{}
+
+  \def\tagform@#1{%
+    \maketag@@@{\zmath@currentpunct(\ignorespaces#1\unskip\@@italiccorr)}%
+    \gdef\zmath@currentpunct{}%
+  }
+
+  \NewDocumentCommand \zpunct { m }
+    { \gdef\zmath@currentpunct{#1\space} }
+
+  % ----------------------------------------------------------------------------
+  % \zcond *[expr]{condition}
+  %   Typesets an "evaluated at" condition, placing the condition as a
+  %   subscript on a vertical bar.
+  %
+  %   No star:  plain \rvert with subscript; no left delimiter.
+  %             Use when the preceding expression already has natural
+  %             delimiters or when compactness is preferred.
+  %   Star:     \left. ... \right\rvert pair; the optional expression is
+  %             wrapped in auto-sized delimiters so the bar height matches
+  %             the content.
+  %
+  %   ARGUMENTS
+  %     star       wraps the optional expression in \left. \right\rvert
+  %     [expr]     the expression to the left of the bar (optional)
+  %     {cond}     the subscript condition (mandatory)
+  %
+  %   EXAMPLES
+  %     \zcond{x=0}                  →  |_{x=0}
+  %     \zcond[f(x)]{x=0}            →  f(x)|_{x=0}
+  %     \zcond*[\frac{df}{dx}]{x=0}  →  \left. df/dx \right|_{x=0}
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zcond { s O{} m }
+    {
+      \ensuremath
+        {
+          \IfBooleanTF {#1}
+            { \left. #2 \right\rvert_{ \zscale{#3} } }
+            { #2 \rvert_{ \zscale{#3} } }
+        }
+    }
+
+% ==============================================================================
+
+% ==============================================================================
+% expl3 INTERFACE  (\ExplSyntaxOn block)
+% ==============================================================================
+\ExplSyntaxOn
+
+  % ============================================================================
+  % SCALE COEFFICIENT
+  % ----------------------------------------------------------------------------
+  % \c_zmath_scale_fp — default scale factor applied by \zscale and by starred
+  % limit/script arguments when no explicit factor is provided.
+  % Settable via package option:  scale=<value>  (default 0.6)
+  %
+  % The constant is initialised by expanding \zmath@scale at definition time
+  % via \exp_args:NNf so the fp engine receives the literal number, not the
+  % macro token.
+  % ============================================================================
+
+  \exp_args:NNf \fp_const:Nn \c_zmath_scale_fp { \zmath@scale }
+
+  % ============================================================================
+  % INTEGRAL SPACING CONSTANTS
+  % ----------------------------------------------------------------------------
+  % All constant names follow the pattern:
+  %   \c_zmath_int_<glyph>_<placement>_<limit>_<dim>
+  %
+  %   <glyph>     single   \intop alone (type "1")
+  %               cluster  two or more \intop glyphs (types "2", "3", ..., \cdots)
+  %               oint     closed-path \ointop (type "o")
+  %               disp     cluster or oint in display mode (shared)
+  %               inline   any type in inline/text mode (shared)
+  %
+  %   <placement> sep      inter-glyph spacing (no limit involved)
+  %               side     limits to the lower-left / upper-right of the glyph
+  %               stack    limits stacked below / above the glyph via \limits
+  %
+  %   <limit>     low / up          lower / upper limit
+  %               dots_left/right   kerning around a \cdots bridge (sep only)
+  %
+  %   <dim>       h   horizontal \muskip (math units)
+  %               v   vertical   \dim   (absolute, e.g. ex)
+  %
+  % Each constant is initialised from its corresponding package option macro so
+  % that load-time overrides (e.g. int-sep=-18mu) take effect automatically.
+  % ============================================================================
+
+  % --- Inter-glyph kerning ----------------------------------------------------
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_sep_h               { \zmath@int@cluster@sep@h               }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_dots_left_h         { \zmath@int@cluster@dots@left@h         }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_dots_right_h        { \zmath@int@cluster@dots@right@h        }
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_cluster_sep_h        { \zmath@int@inline@cluster@sep@h        }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_cluster_dots_left_h  { \zmath@int@inline@cluster@dots@left@h  }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_cluster_dots_right_h { \zmath@int@inline@cluster@dots@right@h }
+
+  % --- Single integral — side limits (display, no star) ----------------------
+
+  \exp_args:NNf \dim_const:Nn    \c_zmath_int_single_side_low_v    { \zmath@int@single@side@low@v }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_side_low_h    { \zmath@int@single@side@low@h }
+  \exp_args:NNf \dim_const:Nn    \c_zmath_int_single_side_up_v     { \zmath@int@single@side@up@v  }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_side_up_h     { \zmath@int@single@side@up@h  }
+
+  % --- Stacked limits (display, star) -----------------------------------------
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_stack_low_h   { \zmath@int@single@stack@low@h  }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_single_stack_up_h    { \zmath@int@single@stack@up@h   }
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_stack_low_h  { \zmath@int@cluster@stack@low@h }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_cluster_stack_up_h   { \zmath@int@cluster@stack@up@h  }
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_oint_stack_low_h     { \zmath@int@oint@stack@low@h    }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_oint_stack_up_h      { \zmath@int@oint@stack@up@h     }
+
+  % --- Cluster / oint — side limits (display, no star) -----------------------
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_disp_side_low_h      { \zmath@int@disp@side@low@h }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_disp_side_up_h       { \zmath@int@disp@side@up@h  }
+
+  % --- Side limits (inline / text mode) ---------------------------------------
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_side_low_h    { \zmath@int@inline@side@low@h }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_side_up_h     { \zmath@int@inline@side@up@h  }
+
+  % --- Stacked limits (inline, star) ------------------------------------------
+
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_stack_low_h   { \zmath@int@inline@stack@low@h }
+  \exp_args:NNf \muskip_const:Nn \c_zmath_int_inline_stack_up_h    { \zmath@int@inline@stack@up@h  }
+
+  \exp_args:NNf \dim_const:Nn    \c_zmath_int_inline_stack_low_v   { \zmath@int@inline@stack@low@v }
+  \exp_args:NNf \dim_const:Nn    \c_zmath_int_inline_stack_up_v    { \zmath@int@inline@stack@up@v  }
+
+  \muskip_const:Nn \c_zmath_int_inline_stack_limit_shift_h { -2mu }
+
+  % ============================================================================
+  % ZFRAC BOOLEAN AND TOKEN-LIST STATE
+  % ----------------------------------------------------------------------------
+  % All state is local (l__) and reset at every \zfrac call site.
+  %
+  %   \l__zfrac_math_bool        true when \zfrac is called inside math mode
+  %   \l__zfrac_num_paren_bool   true when the numerator was given in [...]
+  %   \l__zfrac_den_paren_bool   true when the denominator was given in [...]
+  %   \l__zfrac_den_present_bool true when a denominator argument was supplied
+  %   \l__zfrac_num_tl           token list holding the resolved numerator
+  %   \l__zfrac_den_tl           token list holding the resolved denominator
+  % ============================================================================
+
+  \bool_new:N \l__zfrac_math_bool
+  \bool_new:N \l__zfrac_num_paren_bool
+  \bool_new:N \l__zfrac_den_paren_bool
+  \bool_new:N \l__zfrac_den_present_bool
+  \tl_new:N   \l__zfrac_num_tl
+  \tl_new:N   \l__zfrac_den_tl
+
+  % ============================================================================
+  % SCRATCH STORAGE
+  % ============================================================================
+
+  \tl_new:N \l__zmath_base_tl
+
+  % ============================================================================
+  % INTERNAL HELPERS
+  % ============================================================================
+
+  % ----------------------------------------------------------------------------
+  % \zmath_maybe_scale:nn
+  %   Passes #2 through \zscale when the boolean #1 is true; returns #2
+  %   unchanged otherwise.  Used to honour per-argument star flags in \zint
+  %   and \zscript.
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Nn \zmath_maybe_scale:nn
+    { \bool_if:nTF {#1} { \zscale{#2} } {#2} }
+
+  % ----------------------------------------------------------------------------
+  % \__zfrac_paren:n
+  %   Wraps #1 in parentheses appropriate to the ambient mode: \left( \right)
+  %   in math mode, plain () in text mode.
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Npn \__zfrac_paren:n #1
+    {
+      \bool_if:NTF \l__zfrac_math_bool
+        { \left( #1 \right) }
+        { (#1) }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \__zfrac_ctx:n
+  %   In math mode returns #1 unchanged.  In text mode wraps #1 in \mbox so
+  %   that nested \zfrac calls inside a text-mode argument still see text mode
+  %   rather than inadvertently entering math mode.
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Npn \__zfrac_ctx:n #1
+    {
+      \bool_if:NTF \l__zfrac_math_bool
+        { #1 }
+        { \mbox{#1} }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \__zfrac_arg:Nn
+  %   Renders one fraction argument.  If the boolean #1 is true the content #2
+  %   is wrapped in \__zfrac_paren:n; otherwise it is passed through
+  %   \__zfrac_ctx:n unchanged.
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Npn \__zfrac_arg:Nn #1 #2
+    {
+      \bool_if:NTF #1
+        { \__zfrac_paren:n { \__zfrac_ctx:n {#2} } }
+        { \__zfrac_ctx:n {#2} }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \__zfrac_render:nn
+  %   Emits the final output once all state booleans and token lists have been
+  %   resolved by \zfrac.  Branches first on denominator presence, then on the
+  %   two star flags, then on math/text mode.
+  %
+  %   #1  first star boolean  (selects \nicefrac or slash when true)
+  %   #2  second star boolean (selects slash notation when both stars true)
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Npn \__zfrac_render:nn #1 #2
+    {
+      \bool_if:NF \l__zfrac_den_present_bool
+        {% no denominator — emit numerator only
+          \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl }
+        }
+        {
+          \IfBooleanTF {#1}
+            {
+              \IfBooleanTF {#2}
+                {% ** — slash notation
+                  \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl }
+                  /
+                  \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl }
+                }
+                {% * — oblique \nicefrac
+                  \nicefrac
+                    { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
+                    { \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl } }
+                }
+            }
+            {% no star — standard \frac (ensuremath wrapper in text mode)
+              \bool_if:NTF \l__zfrac_math_bool
+                {
+                  \frac
+                    { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
+                    { \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl } }
+                }
+                {
+                  \ensuremath
+                    {
+                      \frac
+                        { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
+                        { \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl } }
+                    }
+                }
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \__zfrac_parse:nnnnnn
+  %   Resolves the six raw xparse arguments into the five state variables
+  %   consumed by \__zfrac_render:nn.  Kept separate from the public command
+  %   so that \zfrac itself remains a thin dispatcher.
+  %
+  %   Routing table  (#3 = o_a   #4 = g_a   #5 = o_b   #6 = g_b):
+  %
+  %     call            #3   #4   #5   #6   → num    den
+  %     \zfrac{n}{d}    -    n    -    d    → {n}    {d}
+  %     \zfrac{n}[d]    -    n    d    -    → {n}    [d]
+  %     \zfrac[n]{d}    n    d    -    -    → [n]    {d}   ← #4 re-routed to den
+  %     \zfrac[n][d]    n    -    d    -    → [n]    [d]
+  %     \zfrac{n}       -    n    -    -    → {1}    {n}   ← single brace
+  %     \zfrac[n]       n    -    -    -    → {1}    [n]   ← single bracket
+  %
+  %   The tricky case is \zfrac[n]{d}: xparse consumes [n] as #3 and then
+  %   greedily takes {d} as #4, so #4 must be re-routed to the denominator.
+  %   Single-argument forms are detected by all remaining slots being \NoValue.
+  % ----------------------------------------------------------------------------
+
+  \cs_new_protected:Npn \__zfrac_parse:nnnnnn #1 #2 #3 #4 #5 #6
+    {
+      \IfNoValueTF {#3}
+        {% #3 absent: first real token was a brace group
+          \IfNoValueTF {#5}
+            {
+              \IfNoValueTF {#6}
+                {% only {#4} present → single brace: num = 1, den = {#4}
+                  \tl_set:Nn \l__zfrac_num_tl { 1 }
+                  \bool_set_false:N \l__zfrac_num_paren_bool
+                  \bool_set_true:N  \l__zfrac_den_present_bool
+                  \tl_set:Nn \l__zfrac_den_tl {#4}
+                  \bool_set_false:N \l__zfrac_den_paren_bool
+                }
+                {% {#4} and {#6} → \zfrac{n}{d}
+                  \tl_set:Nn \l__zfrac_num_tl {#4}
+                  \bool_set_false:N \l__zfrac_num_paren_bool
+                  \bool_set_true:N  \l__zfrac_den_present_bool
+                  \tl_set:Nn \l__zfrac_den_tl {#6}
+                  \bool_set_false:N \l__zfrac_den_paren_bool
+                }
+            }
+            {% [#5] present → \zfrac{n}[d]
+              \tl_set:Nn \l__zfrac_num_tl {#4}
+              \bool_set_false:N \l__zfrac_num_paren_bool
+              \bool_set_true:N  \l__zfrac_den_present_bool
+              \tl_set:Nn \l__zfrac_den_tl {#5}
+              \bool_set_true:N  \l__zfrac_den_paren_bool
+            }
+        }
+        {% #3 present: first real token was a bracket group
+          \IfNoValueTF {#4}
+            {
+              \IfNoValueTF {#5}
+                {% only [#3] present → single bracket: num = 1, den = [#3]
+                  \tl_set:Nn \l__zfrac_num_tl { 1 }
+                  \bool_set_false:N \l__zfrac_num_paren_bool
+                  \bool_set_true:N  \l__zfrac_den_present_bool
+                  \tl_set:Nn \l__zfrac_den_tl {#3}
+                  \bool_set_true:N  \l__zfrac_den_paren_bool
+                }
+                {% [#3] and [#5] → \zfrac[n][d]
+                  \tl_set:Nn \l__zfrac_num_tl {#3}
+                  \bool_set_true:N  \l__zfrac_num_paren_bool
+                  \bool_set_true:N  \l__zfrac_den_present_bool
+                  \tl_set:Nn \l__zfrac_den_tl {#5}
+                  \bool_set_true:N  \l__zfrac_den_paren_bool
+                }
+            }
+            {% [#3] and {#4} both present → \zfrac[n]{d}, #4 re-routed to den
+              \tl_set:Nn \l__zfrac_num_tl {#3}
+              \bool_set_true:N  \l__zfrac_num_paren_bool
+              \bool_set_true:N  \l__zfrac_den_present_bool
+              \tl_set:Nn \l__zfrac_den_tl {#4}
+              \bool_set_false:N \l__zfrac_den_paren_bool
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zmath_render_cluster:n  (see \zint)
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Nn \zmath_render_cluster:n
+    {
+      \tl_set:Nn \l__zmath_base_tl {#1}
+      \tl_if_blank:nT {#1} { \tl_set:Nn \l__zmath_base_tl {1} }
+      \str_if_eq:VnTF \l__zmath_base_tl { o }
+        { \ointop }
+        {
+          \regex_match:nVTF { \A [1-9][0-9]* \Z } \l__zmath_base_tl
+            {
+              \int_step_inline:nn { \l__zmath_base_tl }
+                {
+                  \intop
+                  \int_compare:nNnF { ##1 } = { \l__zmath_base_tl }
+                    {
+                      \mathchoice
+                        { \mkern \c_zmath_int_cluster_sep_h }
+                        { \mkern \c_zmath_int_inline_cluster_sep_h }
+                        { \mkern \c_zmath_int_inline_cluster_sep_h }
+                        { \mkern \c_zmath_int_inline_cluster_sep_h }
+                    }
+                }
+            }
+            {
+              \intop
+              \mathchoice
+                { \mkern \c_zmath_int_cluster_dots_left_h \cdots \mkern \c_zmath_int_cluster_dots_right_h }
+                { \mkern \c_zmath_int_inline_cluster_dots_left_h \cdots \mkern \c_zmath_int_inline_cluster_dots_right_h }
+                { \mkern \c_zmath_int_inline_cluster_dots_left_h \cdots \mkern \c_zmath_int_inline_cluster_dots_right_h }
+                { \mkern \c_zmath_int_inline_cluster_dots_left_h \cdots \mkern \c_zmath_int_inline_cluster_dots_right_h }
+              \intop
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zmath_single_integral:nnnn  (see \zint)
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Nn \zmath_single_integral:nnnn
+    {
+      \mathop
+        {
+          \tl_if_blank:nF {#2}
+            {
+              \hbox
+                {
+                  \raisebox{\c_zmath_int_single_side_low_v}
+                    { \ensuremath { \scriptstyle \zmath_maybe_scale:nn {#1} {#2} } }
+                }
+              \mkern \c_zmath_int_single_side_low_h
+            }
+          \int
+          \tl_if_blank:nF {#4}
+            {
+              \mkern \c_zmath_int_single_side_up_h
+              \hbox
+                {
+                  \raisebox{\c_zmath_int_single_side_up_v}
+                    { \ensuremath { \scriptstyle \zmath_maybe_scale:nn {#3} {#4} } }
+                }
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zmath_int_display:nnnnnn  (see \zint)
+  %
+  %   Rendering paths:
+  %     single + side    →  \zmath_single_integral:nnnn  (raisebox)
+  %     single + stack   →  \mathop{\intop}\limits       (single_stack kerns)
+  %     cluster + side   →  \mathop{cluster}\nolimits    (disp_side kerns)
+  %     cluster + stack  →  \mathop{cluster}\limits      (cluster_stack kerns)
+  %     oint + side      →  \mathop{\ointop}\nolimits    (disp_side kerns)
+  %     oint + stack     →  \mathop{\ointop}\limits      (oint_stack kerns)
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Nn \zmath_int_display:nnnnnn
+    {
+      \regex_match:nnTF { \A 1 \Z } {#6}
+        {
+          \bool_if:nTF {#5}
+            {
+              \mathop{ \intop } \limits
+              \tl_if_blank:nF {#2}
+                { \sb{ \mkern \c_zmath_int_single_stack_low_h \zmath_maybe_scale:nn {#1} {#2} } }
+              \tl_if_blank:nF {#4}
+                { \sp{ \mkern \c_zmath_int_single_stack_up_h \zmath_maybe_scale:nn {#3} {#4} } }
+            }
+            {
+              \zmath_single_integral:nnnn {#1}{#2}{#3}{#4}
+            }
+        }
+        {
+          \bool_if:nTF {#5}
+            {
+              \mathop{ \zmath_render_cluster:n {#6} } \limits
+              \tl_if_blank:nF {#2}
+                { \sb{ \mkern \c_zmath_int_cluster_stack_low_h \zmath_maybe_scale:nn {#1} {#2} } }
+              \tl_if_blank:nF {#4}
+                { \sp{ \mkern \c_zmath_int_cluster_stack_up_h \zmath_maybe_scale:nn {#3} {#4} } }
+            }
+            {
+              \mathop{ \zmath_render_cluster:n {#6} } \nolimits
+              \tl_if_blank:nF {#2}
+                { \sb{ \mkern \c_zmath_int_disp_side_low_h \zmath_maybe_scale:nn {#1} {#2} } }
+              \tl_if_blank:nF {#4}
+                { \sp{ \mkern \c_zmath_int_disp_side_up_h \zmath_maybe_scale:nn {#3} {#4} } }
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zmath_int_inline:nnnnnn  (see \zint)
+  %
+  %   Side mode (no star):   limits as right-side sub/superscripts.
+  %   Stacked mode (star):   \mathop{...}\limits with invisible vertical struts
+  %                          and horizontal nudges to prevent cramped spacing.
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Nn \zmath_int_inline:nnnnnn
+    {
+      \bool_if:nTF {#5}
+        {
+          \mathop{ \zmath_render_cluster:n {#6} } \limits
+          \tl_if_blank:nF {#2}
+            {
+              \sb
+                {
+                  \mkern \c_zmath_int_inline_stack_low_h
+                  \vphantom{\rule{0pt}{\c_zmath_int_inline_stack_low_v}}
+                  \zmath_maybe_scale:nn {#1} {#2}
+                }
+            }
+          \tl_if_blank:nF {#4}
+            {
+              \sp
+                {
+                  \mkern \c_zmath_int_inline_stack_up_h
+                  \vphantom{\rule{0pt}{\c_zmath_int_inline_stack_up_v}}
+                  \zmath_maybe_scale:nn {#3} {#4}
+                }
+            }
+        }
+        {
+          \zmath_render_cluster:n {#6}
+          \tl_if_blank:nF {#2}
+            { \sb{ \mkern \c_zmath_int_inline_side_low_h \zmath_maybe_scale:nn {#1} {#2} } }
+          \tl_if_blank:nF {#4}
+            { \sp{ \mkern \c_zmath_int_inline_side_up_h \zmath_maybe_scale:nn {#3} {#4} } }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \__zprime_make:n
+  %   Emits #1 copies of a slightly enlarged prime glyph.  Used by \zprime to
+  %   build single, double, or n-fold prime accents and superscripts uniformly.
+  % ----------------------------------------------------------------------------
+
+  \cs_new:Npn \__zprime_make:n #1
+    {
+      \int_step_inline:nn {#1} { \text{\scalebox{1.1}{$\prime$}} }
+    }
+
+  % ============================================================================
+  % PUBLIC API
+  % ============================================================================
+
+  % ----------------------------------------------------------------------------
+  % \zscale[<factor>]{<math>}
+  %   Scales math content uniformly by <factor> (default: \c_zmath_scale_fp).
+  %   Safe in both math and text mode.
+  %   Settable via package option:  scale=<value>
+  %
+  %   \zscale{x^2}            % uses default factor (0.6)
+  %   \zscale[0.8]{\nabla f}  % explicit factor 0.8
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zscale { O{} m }
+    {
+      \scalebox
+        { \tl_if_blank:nTF {#1} { \fp_to_decimal:N \c_zmath_scale_fp } {#1} }
+        { \ensuremath{#2} }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zscript *[pre-sub] *[pre-sup] {nucleus} *[post-sub] *[post-sup]
+  %   Attaches up to four scripts to a nucleus: a leading subscript and
+  %   superscript (placed before the nucleus as pre-scripts) and a trailing
+  %   subscript and superscript.  A star before any optional argument applies
+  %   \zscale to that script.  Omitting an optional argument suppresses it.
+  %
+  %   \zscript[i=1][n]{A}[x][y]   % pre-sub i=1, pre-sup n, post-sub x, post-sup y
+  %   \zscript*[k]{F}[j]          % pre-sub k scaled, post-sub j unscaled
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zscript { s O{} s O{} m s O{} s O{} }
+    {
+      \ensuremath
+        {
+          \tl_if_blank:nF {#2} { {} \sb{ \zmath_maybe_scale:nn {#1} {#2} } }
+          \tl_if_blank:nF {#4}
+            {
+              \tl_if_blank:nTF {#2} { {} } {}
+              \sp{ \zmath_maybe_scale:nn {#3} {#4} }
+            }
+          \tl_set:Nn \l__zmath_base_tl { #5 }
+          \tl_if_blank:nF {#7}
+            { \tl_put_right:Nn \l__zmath_base_tl { \sb{ \zmath_maybe_scale:nn {#6} {#7} } } }
+          \tl_if_blank:nF {#9}
+            { \tl_put_right:Nn \l__zmath_base_tl { \sp{ \zmath_maybe_scale:nn {#8} {#9} } } }
+          \l__zmath_base_tl
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zarg{<expr>}
+  %   Typesets a function-argument parenthesised expression at a reduced scale,
+  %   with a small kern before the opening parenthesis to optically tighten the
+  %   gap between the function name and its argument.  Safe in both math and
+  %   text mode.
+  %   Settable via package options:  arg-scale=<value>  arg-kern=<muskip>
+  %
+  %   f\zarg{x}        →  f(x)   at arg-scale size, lightly kerned
+  %   f\zarg{x^2 + 1}  →  f(x²+1)
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zarg { m }
+    {
+      \scalebox{\zmath@arg@scale}
+        {
+          \ensuremath
+            { \mkern \zmath@arg@kern \left( #1 \right) }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zdiff *t*[order]{var}
+  %   Typesets a differential or derivative operator.
+  %
+  %   No star:   differential    d x^n         (with leading thin space)
+  %   One star:  derivative      d^n / d x^n   as \frac
+  %   Two stars: derivative      d^n / d x^n   as \nicefrac
+  %
+  %   ARGUMENTS
+  %     first  star   converts differential into a derivative fraction
+  %     second star   uses \nicefrac instead of \frac (implies first star)
+  %     [order]       optional exponent n  (omit for first-order)
+  %     {var}         differentiation variable (mandatory)
+  %
+  %   EXAMPLES
+  %     \zdiff{x}       →  dx
+  %     \zdiff[2]{x}    →  dx²
+  %     \zdiff*[2]{x}   →  d²/dx²   (\frac form)
+  %     \zdiff**[2]{x}  →  d²/dx²   (\nicefrac form)
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zdiff { s t* O{} m }
+    {
+      \ensuremath
+        {
+          \IfBooleanTF {#1}
+            {
+              \IfBooleanTF {#2}
+                {% ** — nicefrac derivative
+                  \nicefrac
+                    { \text{d} \tl_if_blank:nF {#3} { ^{#3} } }
+                    { \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
+                }
+                {% * — frac derivative
+                  \frac
+                    { \text{d} \tl_if_blank:nF {#3} { ^{#3} } }
+                    { \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
+                }
+              \mkern 2mu
+            }
+            {% no star — differential
+              \mkern 10mu \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} }
+            }
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zprime *[n][offset]{symbol}
+  %   Adorns a symbol with n prime marks, either as an accent (default) or as
+  %   a superscript (star form).  The prime glyphs are scaled to 110% for
+  %   visibility.  An optional vertical offset fine-tunes placement.
+  %
+  %   No star:  accent form — primes sit above the symbol via \accentset,
+  %             with a \vphantom strut to prevent line-height collapse.
+  %   Star:     superscript form — primes are attached as a raised \sp{}.
+  %
+  %   ARGUMENTS
+  %     star      switches to superscript mode
+  %     [n]       number of prime marks  (default: 1)
+  %     [offset]  vertical offset of the primes (default: -0.9ex in accent
+  %               mode; no adjustment in superscript mode)
+  %     {symbol}  the base symbol to adorn
+  %
+  %   EXAMPLES
+  %     \zprime{f}             →  f  with one accent prime
+  %     \zprime[2]{g}          →  g  with two accent primes
+  %     \zprime*{f}            →  f' in superscript
+  %     \zprime*[2][0.1ex]{A}  →  A'' raised by 0.1ex
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zprime { s O{1} O{} m }
+    {
+      \IfBooleanTF {#1}
+        {% star — superscript primes
+          \tl_set:Nn \l_tmpa_tl { \__zprime_make:n {#2} }
+          #4 \sp
+            {
+              \tl_if_blank:nTF {#3}
+                { \l_tmpa_tl }
+                { \raisebox{#3}{\l_tmpa_tl} }
+            }
+        }
+        {% no star — accent primes via \accentset
+          \tl_set:Nn \l_tmpa_tl { \__zprime_make:n {#2} }
+          \tl_set:Nn \l_tmpb_tl { \tl_if_blank:nTF {#3} { -0.9ex } {#3} }
+          \vphantom { \raisebox{1.2ex}{\l_tmpa_tl} }
+          \accentset
+            { \smash { \raisebox{\l_tmpb_tl}{\l_tmpa_tl} } }
+            {#4}
+        }
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zvec{<symbol>}
+  %   Typesets a vector as an underlined symbol, matching the common
+  %   engineering convention.  Safe in both math and text mode.
+  %
+  %   \zvec{u}   →   u̲
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zvec { m }
+    { \ensuremath { \underline{#1} } }
+
+  % ----------------------------------------------------------------------------
+  % \zmat{<symbol>}
+  %   Typesets a matrix as a doubly-underlined symbol, extending the \zvec
+  %   convention to second-order tensors.  Safe in both math and text mode.
+  %
+  %   \zmat{A}   →   A̲̲
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zmat { m }
+    { \ensuremath { \underline{\underline{#1}} } }
+
+  % ----------------------------------------------------------------------------
+  % \zfrac **[num][den]
+  %   Flexible fraction whose style and parenthesisation are controlled by
+  %   stars and argument delimiters.  If only one argument is supplied it is
+  %   treated as the denominator and the numerator defaults to 1.
+  %
+  %   STYLE (stars)
+  %     \zfrac        standard \frac  (outside math: wrapped in \ensuremath)
+  %     \zfrac*       \nicefrac  (oblique, suitable inline)
+  %     \zfrac**      slash notation:  n/d
+  %
+  %   ARGUMENTS
+  %     {x}  →  x    (no parentheses)
+  %     [x]  →  (x)  (\left(\right) in math mode, plain () outside)
+  %
+  %   CALL FORMS
+  %     \zfrac{n}{d}   →   n  /  d    plain numerator, plain denominator
+  %     \zfrac{n}[d]   →   n  /  (d)  plain numerator, parenthesised denominator
+  %     \zfrac[n]{d}   →  (n) /  d    parenthesised numerator, plain denominator
+  %     \zfrac[n][d]   →  (n) /  (d)  both parenthesised
+  %     \zfrac{d}      →   1  /  d    single plain arg → denominator, num = 1
+  %     \zfrac[d]      →   1  /  (d)  single bracket arg → denominator, num = 1
+  %
+  %   NESTING
+  %     Calls may be nested freely.  The ambient mode (math or text) is
+  %     captured at each call site, so inner calls respect the mode of their
+  %     own context rather than that of the outer call.  In text mode, inner
+  %     math is triggered by wrapping the argument in $...$ as usual.
+  %
+  %   EXAMPLES
+  %     \zfrac{\alpha}[\lambda]          →  \frac{\alpha}{(\lambda)}     (text)
+  %     $\zfrac{\alpha}[\lambda]$        →  \frac{\alpha}{\left(\lambda\right)}
+  %     $\zfrac**{1}[\zfrac[\mu]{\nu}]$  →  1/\left((\mu)/\nu\right)
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zfrac { s s o g o g }
+    {
+      \bool_set:Nn \l__zfrac_math_bool { \mode_if_math_p: }
+      \__zfrac_parse:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6}
+      \__zfrac_render:nn {#1} {#2}
+    }
+
+  % ----------------------------------------------------------------------------
+  % \zint *[lower] *[upper] *[type]
+  %   Renders an integral with configurable glyph type and limit placement.
+  %   All stars and optional arguments are independent and may be omitted.
+  %
+  %   ARGUMENTS
+  %     * before [lower]   applies \zscale to the lower limit
+  %     [lower]            lower limit content; omit to suppress
+  %     * before [upper]   applies \zscale to the upper limit
+  %     [upper]            upper limit content; omit to suppress
+  %     * before [type]    forces stacked limits (below/above) in display mode
+  %     [type]             integral variant (default "1"):
+  %                          "1"       single ∫
+  %                          "2","3"…n n tightly-spaced ∫∫∫
+  %                          "o"       closed-path ∮
+  %                          other     ∫⋯∫ (two integrals bridged by \cdots)
+  %
+  %   LIMIT PLACEMENT — display mode
+  %     No star:  side limits for all types.
+  %       "1"        lower-left / upper-right via \raisebox
+  %       "2"...,"o" right-side sub/sup via \nolimits
+  %     Star:     stacked limits (below/above) for all types via \limits.
+  %
+  %   LIMIT PLACEMENT — inline / text mode
+  %     No star:  right-side sub/sup for all types.
+  %     Star:     stacked limits via \limits with invisible vertical struts,
+  %               which push adjacent text lines apart to prevent overlap.
+  %
+  %   QUICK REFERENCE
+  %
+  %     Command            Display mode                    Inline mode
+  %     -----------------------------------------------------------------------
+  %     \zint[a][b]        single, lower-left/upper-right  single, right-side
+  %     \zint[a][b]*       single, stacked below/above     single, stacked
+  %     \zint[a][b][2]     double, right-side              double, right-side
+  %     \zint[a][b]*[2]    double, stacked below/above     double, stacked
+  %     \zint[a][b][o]     oint,   right-side              oint,   right-side
+  %     \zint[a][b]*[o]    oint,   stacked below/above     oint,   stacked
+  %     -----------------------------------------------------------------------
+  %     \zint*[a][b]       lower limit scaled
+  %     \zint*[a]*[b]*     both limits scaled, stacked
+  %     \zint*[a][b]*[2]   lower limit scaled, double, stacked
+  %
+  %   The placement star and the per-limit scaling stars are fully independent.
+  % ----------------------------------------------------------------------------
+
+  \NewDocumentCommand \zint { s O{} s O{} s O{1} }
+    {
+      \mode_if_math:TF
+        {
+          \mathchoice
+            { \displaystyle \zmath_int_display:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6} }
+            { \textstyle    \zmath_int_inline:nnnnnn  {#1}{#2}{#3}{#4}{#5}{#6} }
+            { \textstyle    \zmath_int_inline:nnnnnn  {#1}{#2}{#3}{#4}{#5}{#6} }
+            { \textstyle    \zmath_int_inline:nnnnnn  {#1}{#2}{#3}{#4}{#5}{#6} }
+        }
+        {
+          \ensuremath
+            { \textstyle \zmath_int_inline:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6} }
+        }
+    }
+
+\ExplSyntaxOff
+% ==============================================================================
+
+\makeatother
