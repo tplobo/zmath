@@ -1,0 +1,131 @@
+{
+  "workbench.colorCustomizations": {
+    "editorGroup.border": "#5B3A8B", // Editor groups separator
+    "panel.border": "#5B3A8B", // Bottom panel separator
+    "sideBar.border": "#5B3A8B" // Side-bar separator
+    //"sash.hoverBorder": "#FF00FF" // Hover color for dragging
+  },
+  "gitlens.codeLens.authors.enabled": false,
+  "gitlens.codeLens.recentChange.enabled": false,
+  "[latex]": {
+    "editor.wordWrap": "on",
+    "editor.inlineSuggest.enabled": false
+  },
+  "latex-workshop.bind.altKeymap.enabled": false,
+  "latex-workshop.synctex.afterBuild.enabled": true,
+  "latex-workshop.synctex.path": "synctex",
+  "latex-workshop.view.pdf.internal.synctex.keybinding": "double-click",
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.view.pdf.color.dark.backgroundColor": "#2d2d30",
+  "latex-workshop.view.outline.sync.viewer": true,
+  "latex-workshop.view.pdf.tab.editorGroup": "current",
+  "latex-workshop.latex.outDir": "tmp-latexmk/test",
+  // "latex-workshop.latex.build.forceRecipeUsage": true,
+  "latex-workshop.latex.rootFile.indicator": "\\begin{document}",
+  "latex-workshop.latex.autoBuild.run": "never",
+  "latex-workshop.latex.autoClean.run": "never", // "onBuilt", // Clean after build
+  "latex-workshop.message.log.show": true,
+  //"latex-workshop.message.badbox.show": false,
+  "latex-workshop.message.information.show": true,
+  "latex-workshop.message.warning.show": true,
+  "latex-workshop.message.error.show": true,
+  "latex-workshop.latex.build.clearLog.everyRecipeStep.enabled": false,
+  "latex-workshop.view.autoFocus.enabled": false,
+  "latex-workshop.latex.clean.fileTypes": [
+    "*.aux",
+    "*.bbl",
+    "*.blg",
+    "*.idx",
+    "*.ind",
+    "*.lof",
+    "*.lot",
+    "*.out",
+    "*.toc",
+    "*.acn",
+    "*.acr",
+    "*.alg",
+    "*.glg",
+    "*.glo",
+    "*.gls",
+    "*.ist",
+    "*.fls",
+    "*.log",
+    "*.fdb_latexmk",
+    "*.figlist",
+    "*.listing"
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk (lualatex)",
+      "command": "latexmk",
+      "args": [
+        //"-f",
+        //"-r .vscode/.latexmkrc", // Look for .latexmkrc file here
+        "-time",
+        //"-rules",
+        //"-recorder",
+        //"-dir-report",
+        "-shell-escape",
+        "-interaction=nonstopmode",
+        //"-halt-on-error", // disable to see all errors
+        "-synctex=1",
+        //"-xelatex",
+        "-lualatex",
+        "-verbose",
+        //"-silent", // change to `verbose` to see all output
+        //"-file-line-error", // prevents aux-sub-folders when using `\include`
+        "-outdir=%OUTDIR%",
+        "%DOC%"
+      ],
+      "env": {
+        "TEXINPUTS": ".:./_texmf_///:" // use local pacakges first
+      }
+    },
+    {
+      "name": "time-start",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "TI=$(date '+%Y-%m-%d %H:%M:%S'); echo -n \"\n$TI\" >> compilation_times.tmp;"
+      ]
+    },
+    {
+      "name": "time-end",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "TI=$(tail -n 1 compilation_times.tmp); TF=$(date '+%Y-%m-%d %H:%M:%S'); DT=$(( $(date -j -f '%Y-%m-%d %H:%M:%S' \"$TF\" +%s) - $(date -j -f '%Y-%m-%d %H:%M:%S' \"$TI\" +%s) )); echo \" - $TF: compiled in $DT seconds.\" >> compilation_times.tmp"
+      ]
+    },
+    {
+      "name": "time-start-in-tmp",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "TI=$(date '+%Y-%m-%d %H:%M:%S'); echo -n \"\n$TI\" >> %OUTDIR%/../compilation_times.tmp;"
+      ]
+    },
+    {
+      "name": "time-end-in-tmp",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "TI=$(tail -n 1 %OUTDIR%/../compilation_times.tmp); TF=$(date '+%Y-%m-%d %H:%M:%S'); DT=$(( $(date -j -f '%Y-%m-%d %H:%M:%S' \"$TF\" +%s) - $(date -j -f '%Y-%m-%d %H:%M:%S' \"$TI\" +%s) )); echo \" - $TF: compiled in $DT seconds.\" >> %OUTDIR%/../compilation_times.tmp"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "timed latexmk (lualatex)",
+      "tools": ["time-start", "latexmk (lualatex)", "time-end"]
+    },
+    {
+      "name": "timed latexmk in tmp (lualatex)",
+      "tools": ["time-start-in-tmp", "latexmk (lualatex)", "time-end-in-tmp"]
+    },
+    {
+      "name": "latexmk (lualatex)",
+      "tools": ["latexmk (lualatex)"]
+    }
+  ]
+}

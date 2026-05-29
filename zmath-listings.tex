@@ -1,0 +1,96 @@
+\usepackage{tcolorbox}
+\tcbuselibrary{listings, skins, breakable}
+
+% ---- EVA Dark color palette ----
+\definecolor{eva@bg}      {HTML}{1e2024}
+\definecolor{eva@fg}      {HTML}{cdd3de}
+\definecolor{eva@red}     {HTML}{e06c75}   % line breaks \\
+\definecolor{eva@blue}    {HTML}{61afef}   % zmath package commands
+\definecolor{eva@green}   {HTML}{98c379}   % delimiters: {} [] $ \[ \]
+\definecolor{eva@yellow}  {HTML}{e5c07b}   % environment names
+\definecolor{eva@cyan}    {HTML}{56b6c2}   % math commands
+\definecolor{eva@purple}  {HTML}{cf68e1}   % default: all other \commands
+\definecolor{eva@comment} {HTML}{676e95}   % comments
+
+% ---- listings style ----
+\lstdefinestyle{zmathex}{
+  language=[LaTeX]TeX,
+  basicstyle=\small\ttfamily\color{eva@fg},
+  backgroundcolor=\color{eva@bg},
+  frame=none,
+  aboveskip=0pt,
+  belowskip=0pt,
+  breaklines=true,
+  columns=flexible,
+  keepspaces=true,
+  mathescape=false,
+  %
+  % --- class 1: DEFAULT — all unknown \commands land here (purple) ---
+  % The built-in [LaTeX]TeX keyword list populates class 1 automatically;
+  % overriding keywordstyle [1] recolours all of them purple, and any
+  % command not listed in a higher class also falls through to purple.
+  keywordstyle={[1]\color{eva@purple}},
+  %
+  % --- class 2: environment names used inside \begin{} and \end{} (yellow) ---
+  keywordstyle={[2]\color{eva@yellow}},
+  morekeywords={[2]document,
+    equation,gather,align,alignat,multline,split,
+    cases,array,matrix,pmatrix,bmatrix,vmatrix,
+    itemize,enumerate,description,
+    figure,table,minipage,
+    center,flushleft,flushright,
+    verbatim,lstlisting,tcblisting},
+  %
+  % --- class 3: zmath package commands (blue) ---
+  keywordstyle={[3]\color{eva@blue}},
+  morekeywords={[3]zscale,zscript,zint,zfrac,zarg,zline,
+                   zdiff,zpunct,zprime,zvec,zmat,zcond},
+  %
+  % --- class 4: math commands (cyan) ---
+  keywordstyle={[4]\color{eva@cyan}},
+  morekeywords={[4]},
+  %
+  % --- class 5: local commands (grey) ---
+  keywordstyle={[4]\color{eva@comment}},
+  morekeywords={[4]nl},
+  %
+  % --- comments ---
+  commentstyle=\color{eva@comment},
+  %
+  % --- literate: delimiters green, \\ red ---
+  % The * prefix means replacements apply even inside keyword tokens.
+  % mathescape=false is required for the $ entry to work without
+  % interfering with tcolorbox's listing parser.
+  % \[ and \] are each a two-character sequence: one backslash + bracket.
+  literate=
+    *{\{}{{\textcolor{eva@green}{\{}}}1
+     {\}}{{\textcolor{eva@green}{\}}}}1
+     {[}{{\textcolor{eva@green}{[}}}1
+     {]}{{\textcolor{eva@green}{]}}}1
+     {\$}{{\textcolor{eva@green}{\$}}}1
+     {\\\\}{{\textcolor{eva@red}{\textbackslash\textbackslash}}}2,
+}
+
+\tcbset{
+  zmathex/.style={
+    skin=bicolor,
+    sidebyside,
+    sidebyside align=top seam,
+    sidebyside gap=8mm,
+    lefthand width=0.52\linewidth,
+    listing engine=listings,
+    listing options={style=zmathex},
+    colback=eva@bg,
+    fontupper=\small\ttfamily\color{eva@fg},
+    colbacklower=white,
+    fontlower=\small\rmfamily,
+    colframe=gray!30,
+    segmentation style={draw=none},
+    arc=2pt,
+    boxsep=0pt,
+    top=6pt,
+    bottom=6pt,
+    left=6pt,
+    right=6pt,
+  }
+}

@@ -1,0 +1,33 @@
+\tcbuselibrary{minted, skins, breakable}
+\tcbset{
+  zmathex/.style={
+    skin=bicolor,
+    sidebyside,
+    sidebyside align=top seam,
+    sidebyside gap=8mm,
+    lefthand width=0.52\linewidth,
+    listing engine=minted,
+    minted language=latex,
+    minted options={
+      style= nord-darker, %material,
+      fontsize=\small,
+      breaklines=true,
+      gobble=2
+    },
+    % --- Left Side: Code ---
+    colback=gray!30!black,
+    fontupper=\small\ttfamily\color{white},
+    % --- Right Side: Document Page ---
+    colbacklower=white,
+    fontlower=\small\rmfamily,
+    % --- Framing ---
+    colframe=gray!30,
+    segmentation style={draw=none},
+    arc=2pt,
+    boxsep=0pt,
+    top=6pt,
+    bottom=6pt,
+    left=6pt,
+    right=6pt,
+  }
+}
