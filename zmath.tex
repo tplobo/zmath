@@ -7,6 +7,7 @@
 \usepackage{listings}
 \usepackage{booktabs}
 \usepackage{xcolor}
+\usepackage{ulem}
 \usepackage{microtype}
 \usepackage{enumitem}
 \usepackage{parskip}
@@ -174,6 +175,21 @@ Option & Default & Description \\
 \bottomrule
 \end{tabularx}
 
+% ------------------------------------------------------------------------------
+\subsection{Prime Accents (\cs{zprime})}
+% ------------------------------------------------------------------------------
+
+\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
+\toprule
+Option & Default & Description \\
+\midrule
+\opt{prime-accent-v} & \texttt{-1ex}  & Base vertical baseline clearance for accent-style prime marks relative to the symbol top. \\
+\opt{prime-accent-h} & \texttt{10mu}  & Baseline horizontal math-kern alignment shift for accent-style prime marks. \\
+\opt{prime-script-v} & \texttt{-1ex}  & Base vertical baseline adjustment for superscript-style prime marks relative to standard script height. \\
+\opt{prime-script-h} & \texttt{3mu}   & Baseline horizontal math-kern clearance for superscript-style prime marks. \\
+\bottomrule
+\end{tabularx}
+
 \subsection{Structured Integral System (\cs{zint})}
 
 \begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
@@ -278,32 +294,6 @@ To maintain typographic flexibility, placing a \macroStar\ modifier immediately 
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
-%\subsection{\cs{varsubsup} — legacy right-side scripts}
-% ------------------------------------------------------------------------------
-
-% \DescribeMacro{\varsubsup}
-% \begin{syntax}
-% \cs{varsubsup}\macroArg{nucleus} \macroStar\macroOpt{sub} \macroStar\macroOpt{sup}
-% \end{syntax}
-
-% Convenience wrapper around \cs{zscript} that attaches only trailing
-% (right-side) sub- and superscripts.
-% A~\macroStar\ before a slot \emph{suppresses} scaling for that slot (reversed
-% convention relative to \cs{zscript}, retained for backwards compatibility).
-% Planned to be replaced by direct \cs{zscript} calls.
-
-% \begin{lstlisting}
-% $\varsubsup{T}[ij][2]$    % both scaled (default)
-% $\varsubsup{T}*[ij][2]$   % sub full-size, sup scaled
-% $\varsubsup{T}[ij]*[2]$   % sub scaled, sup full-size
-% \end{lstlisting}
-
-% \medskip\noindent\textbf{Output:}\quad
-% $\varsubsup{T}[ij][2]$\quad
-% $\varsubsup{T}*[ij][2]$\quad
-% $\varsubsup{T}[ij]*[2]$
-
-% ------------------------------------------------------------------------------
 \subsection{\cs{zdot} — bold dot-product operator}
 % ------------------------------------------------------------------------------
 
@@ -364,13 +354,15 @@ The precise structural scale factor and horizontal tracking offset are governed 
 \DescribeMacro{\zline}
 The \cs{zline} utility structurally attaches an arbitrary \macroMeta{count} of horizontal underline rules beneath a target \macroMeta{symbol}. By default, omitting the optional parameter draws a single line. The execution engine dynamically computes the natural horizontal bounding box of the input \macroMeta{symbol}, ensuring that the rule widths match the content exactly without leaking into adjacent characters. It is safe for direct deployment in both text and math modes.
 
+The macro was inspired by the popular \textsf{ulem} package, but eliminates its structural drawbacks. While \textsf{ulem}'s commands alter line weights depending on ambient font sizes and frequently cause layout collisions, \cs{zline} enforces rigorous baseline and thickness alignment.
+
 \begin{syntax}
   \cs{zline}\macroOpt{count}\macroArg{symbol}
 \end{syntax}
 
 \DescribeMacro{\zvec}
 \DescribeMacro{\zmat}
-For convenience in physics and engineering notation, the package provides the secondary shorthand macros \cs{zvec} and \cs{zmat} to standardize vector and matrix underline conventions. Both commands delegate their layout tasks directly to the core \cs{zline} subsystem, generating one and two underlines respectively.
+For convenience in physics and engineering notation, the package provides the secondary shorthand macros \cs{zvec} and \cs{zmat} to standardize vector and matrix underline conventions, as an alternative to bold fonts, \cs{vec}, \cs{overleftrightarrow} and others, that can lead to dense notation. Both commands delegate their layout tasks directly to the core \cs{zline} subsystem, generating one and two underlines respectively.
 
 \begin{syntax}
   \cs{zvec}\macroArg{symbol} \qquad \cs{zmat}\macroArg{symbol}
@@ -382,15 +374,13 @@ The absolute vertical layout dimensions are exposed globally via a unified key--
     zmathex,
     lefthand width=0.8\linewidth
   }
-  \zline{u}                       % Single underline in text mode
+  $\zvec{u} = \vec{u} \ne \uline{u}$                  % zvec vs ulem command
   \nl
-  $\zline[2]{A}$                  % Double underline in inline mode
+  $\zmat{A} = \overleftrightarrow{A} \ne \uuline{A}$  % zmat vs ulem command
   \nl
-  \zline[3]{W}                    % Triple underline
+  \zline[3]{W}                                        % Triple underline
   \nl
-  $\zline{x^2} \ne \zline{x}^2$   % Stacked expressions in math mode
-  \nl
-  $\zmat{A}\cdot\zvec{x}$         % Vector and matrix notation
+  $\zline{x^2} \ne \zline{x}^2$                       % Stacked expressions
 \end{tcblisting}
 
 
@@ -416,13 +406,10 @@ The macro evaluates ambient equation metadata silently under the hood. It execut
   Equations \ref{eq:energy} and \ref{eq:force}
   show important results:
   \begin{gather}
-    \label{eq:energy}
-    E = mc^2 \zpunct{,}
+    \label{eq:energy} E = mc^2 \zpunct{,}
     \\
     \label{eq:force}
-    \vec{F}
-    =
-    m \cdot \vec{a}
+    \vec{F} = m \cdot \vec{a}
     \zpunct{.}
   \end{gather}
 \end{tcblisting}
@@ -435,32 +422,80 @@ The macro evaluates ambient equation metadata silently under the hood. It execut
 The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks, which default to a single prime ($n=1$) if omitted. To maximize clarity and readability across varying display resolutions, the engine automatically scales the output glyph weights to 110\% of their natural font size. 
 
 \begin{syntax}
-  \cs{zprime}\macroStar\macroOpt{n}\macroOpt{offset}\macroArg{symbol}
+  \cs{zprime}\macroStar\macroOpt{n}\macroOpt{v-shift}\macroOpt{h-shift}\macroArg{symbol}
 \end{syntax}
 
 The structural positioning mechanics are dictated by the presence of the optional modifier flag:
 \begin{itemize}[nosep]
-  \item \textbf{not starred} — renders an accent-style layout using an internal \cs{accentset} routine, placing the prime marks directly centered above the horizontal axis of the symbol.
-  \item \textbf{starred} — switches the engine to a superscript-style layout, binding the prime marks conventionally via a right-aligned \cs{sp} placement context.
+  \item \textbf{not starred} — renders an accent-style layout centered horizontally above the axis of the symbol using an internal \cs{accentset} routine. 
+  \item \textbf{starred} — switches the engine to a superscript-style layout, binding the prime marks conventionally via a trailing right-aligned \cs{sp} context.
 \end{itemize}
 
-When evaluating complex glyph silhouettes in accent mode, the optional \macroMeta{offset} parameter can be specified to manually fine-tune the vertical separation gap. When omitted, this parameter defaults to an optically tracked baseline value of \texttt{-0.9ex}:
+Fine-tuning is achieved via two consecutive optional parameters. The first modifier dictates a vertical \macroMeta{v-shift} (evaluated using absolute units like \texttt{ex} or \texttt{pt}), while the second handles a horizontal \macroMeta{h-shift} (evaluated strictly via math-kern \texttt{mu} units). Directionality is normalized globally: positive vertical values shift the primes upward, while positive horizontal values nudge them to the right.
+
+When omitted, positioning offsets naturally fallback to their global package defaults outlined in the options table below.
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.8\linewidth
+    lefthand width=0.75\linewidth
   }
-  $\zprime{f}$         % Accent-mode placement centered above f
+  $\zprime{f} \ne \zprime*{f}$                % Accent vs superscript
   \nl
-  $\zprime[2]{g}$      % Stacked double accent prime above g
+  $\zprime[2]{g} \ne \zprime*[2]{g}$          % Double accent
   \nl
-  $\zprime*{f}$        % Superscript-mode trailing single prime
-  \nl
-  $\zprime*[2]{A}$     % Superscript-mode trailing double prime
+  \begin{gather}
+    \zprime[1][0pt][-20mu]{\int^{\infty}}     % Pushed left
+    \ne
+    \zprime[1]{\int^{\infty}}
+    \\
+    \zprime*[1][-1ex][1mu]{\sum_j^{\infty}}   % Lowered and pushed right
+    \ne
+    \zprime*[1]{\sum_j^{\infty}}
+  \end{gather}
 \end{tcblisting}
 
-GLOBAL VARIABLE AS DEFAULT OFFSET
-EXAMPLE WITH OFFSET
+% % ------------------------------------------------------------------------------
+% \subsection{\cs{zcond} — evaluated-at bar}
+% % ------------------------------------------------------------------------------
+
+% \DescribeMacro{\zcond}
+% \begin{syntax}
+% \cs{zcond} \macroStar\macroStar\macroStar\macroStar \macroOpt{expr} \macroArg{condition}
+% \end{syntax}
+
+% Typesets an ``evaluated at'' vertical bar $|_{\text{condition}}$.
+% If \macroMeta{expr} is supplied and no stars are given, the bar is
+% auto-sized using \cs{left.}\,\ldots\,\cs{right|}.
+% Manual stars override auto-sizing with a fixed \cs{big}/\cs{Big}/\cs{bigg}/\cs{Bigg} step.
+
+% \paragraph{Bar sizing.}
+% \begin{itemize}[noitemsep]
+%   \item No stars, no \macroMeta{expr} — script-size \texttt{|}
+%   \item No stars, with \macroMeta{expr} — auto \cs{left.}\,\macroMeta{expr}\,\cs{right|}
+%   \item \macroStar\ — \cs{big|}
+%   \item \macroStar\macroStar\ — \cs{Big|}
+%   \item \macroStar\macroStar\macroStar\ — \cs{bigg|}
+%   \item \macroStar\macroStar\macroStar\macroStar\ — \cs{Bigg|}
+% \end{itemize}
+
+% When stars are given, \macroMeta{expr} is printed as-is before the fixed-size bar
+% (no automatic \cs{left}/\cs{right} wrapping).
+% The \macroMeta{condition} subscript is always scaled by \cs{zscale} in the
+% no-star path; it is not scaled when stars are present.
+
+% \begin{lstlisting}
+% $\zcond{x=0}$
+% $\zcond[f(x)]{x=0}$
+% $\zcond**[\frac{df}{dx}]{x=0}$
+% \[ \zcond\left[\int_0^t f\,ds\right]{t=T} \]
+% \end{lstlisting}
+
+% \medskip\noindent\textbf{Output:}\quad
+% $\zcond{x=0}$\quad
+% $\zcond[f(x)]{x=0}$\quad
+% $\zcond**[\frac{df}{dx}]{x=0}$
+
+% \[ \zcond[\int_0^t f\,ds]{t=T} \]
 
 % % ------------------------------------------------------------------------------
 % \subsection{\cs{zint} — configurable integral}
@@ -596,49 +631,6 @@ EXAMPLE WITH OFFSET
 % $\zfrac{\alpha}[\beta+1]$ \quad
 % $\zfrac[(\alpha+1)]{\beta}$ \quad
 % $\zfrac{\lambda}$
-
-% % ------------------------------------------------------------------------------
-% \subsection{\cs{zcond} — evaluated-at bar}
-% % ------------------------------------------------------------------------------
-
-% \DescribeMacro{\zcond}
-% \begin{syntax}
-% \cs{zcond} \macroStar\macroStar\macroStar\macroStar \macroOpt{expr} \macroArg{condition}
-% \end{syntax}
-
-% Typesets an ``evaluated at'' vertical bar $|_{\text{condition}}$.
-% If \macroMeta{expr} is supplied and no stars are given, the bar is
-% auto-sized using \cs{left.}\,\ldots\,\cs{right|}.
-% Manual stars override auto-sizing with a fixed \cs{big}/\cs{Big}/\cs{bigg}/\cs{Bigg} step.
-
-% \paragraph{Bar sizing.}
-% \begin{itemize}[noitemsep]
-%   \item No stars, no \macroMeta{expr} — script-size \texttt{|}
-%   \item No stars, with \macroMeta{expr} — auto \cs{left.}\,\macroMeta{expr}\,\cs{right|}
-%   \item \macroStar\ — \cs{big|}
-%   \item \macroStar\macroStar\ — \cs{Big|}
-%   \item \macroStar\macroStar\macroStar\ — \cs{bigg|}
-%   \item \macroStar\macroStar\macroStar\macroStar\ — \cs{Bigg|}
-% \end{itemize}
-
-% When stars are given, \macroMeta{expr} is printed as-is before the fixed-size bar
-% (no automatic \cs{left}/\cs{right} wrapping).
-% The \macroMeta{condition} subscript is always scaled by \cs{zscale} in the
-% no-star path; it is not scaled when stars are present.
-
-% \begin{lstlisting}
-% $\zcond{x=0}$
-% $\zcond[f(x)]{x=0}$
-% $\zcond**[\frac{df}{dx}]{x=0}$
-% \[ \zcond\left[\int_0^t f\,ds\right]{t=T} \]
-% \end{lstlisting}
-
-% \medskip\noindent\textbf{Output:}\quad
-% $\zcond{x=0}$\quad
-% $\zcond[f(x)]{x=0}$\quad
-% $\zcond**[\frac{df}{dx}]{x=0}$
-
-% \[ \zcond[\int_0^t f\,ds]{t=T} \]
 
 % % ==============================================================================
 % \section{Combined Examples}

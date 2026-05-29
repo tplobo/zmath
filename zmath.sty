@@ -74,6 +74,12 @@
 %   dot-scale                scale factor applied to \cdot by \zdot  (default: 1.8)
 %   dot-raise                vertical offset applied to the scaled dot (default: -0.5ex)
 %
+% PRIME ACCENTS (\zprime)
+%   prime-accent-v           accent mode: vertical offset (default: -0.9ex)
+%   prime-accent-h           accent mode: horizontal math-kern (default: 0mu)
+%   prime-script-v           script mode: vertical offset (default: 0pt)
+%   prime-script-h           script mode: horizontal math-kern (default: 0mu)
+%
 % INTEGRAL INTER-GLYPH KERNING
 %   int-sep                  display: spacing between consecutive \intop glyphs
 %   int-dots-left            display: kern before \cdots bridge
@@ -119,6 +125,10 @@
 \newcommand{\zmath@line@sep}{0.9pt}
 \newcommand{\zmath@dot@scale}{1.8}
 \newcommand{\zmath@dot@raise}{-0.5ex}
+\newcommand{\zmath@prime@accent@v}{-1ex}
+\newcommand{\zmath@prime@accent@h}{10mu}
+\newcommand{\zmath@prime@script@v}{-1ex}
+\newcommand{\zmath@prime@script@h}{3mu}
 \newcommand{\zmath@int@cluster@sep@h}{-22mu}
 \newcommand{\zmath@int@cluster@dots@left@h}{-20mu}
 \newcommand{\zmath@int@cluster@dots@right@h}{-10mu}
@@ -152,6 +162,10 @@
 \define@key{zmath}{line-sep}           {\renewcommand{\zmath@line@sep}{#1}}
 \define@key{zmath}{dot-scale}          {\renewcommand{\zmath@dot@scale}{#1}}
 \define@key{zmath}{dot-raise}          {\renewcommand{\zmath@dot@raise}{#1}}
+\define@key{zmath}{prime-accent-v}     {\renewcommand{\zmath@prime@accent@v}{#1}}
+\define@key{zmath}{prime-accent-h}     {\renewcommand{\zmath@prime@accent@h}{#1}}
+\define@key{zmath}{prime-script-v}     {\renewcommand{\zmath@prime@script@v}{#1}}
+\define@key{zmath}{prime-script-h}     {\renewcommand{\zmath@prime@script@h}{#1}}
 \define@key{zmath}{int-sep}            {\renewcommand{\zmath@int@cluster@sep@h}{#1}}
 \define@key{zmath}{int-dots-left}      {\renewcommand{\zmath@int@cluster@dots@left@h}{#1}}
 \define@key{zmath}{int-dots-right}     {\renewcommand{\zmath@int@cluster@dots@right@h}{#1}}
@@ -241,6 +255,20 @@
   % ============================================================================
   \exp_args:NNf \fp_const:Nn  \c_zmath_dot_scale_fp  { \zmath@dot@scale }
   \exp_args:NNf \dim_const:Nn \c_zmath_dot_raise_dim { \zmath@dot@raise  }
+
+% ============================================================================
+  % PRIME ACCENT POSITIONING CONSTANTS
+  % ----------------------------------------------------------------------------
+  % All constant tokens hold user options defined at initialization:
+  %   \c_zmath_prime_accent_v_tl   accent form: default vertical shift
+  %   \c_zmath_prime_accent_h_tl   accent form: default horizontal math-kern
+  %   \c_zmath_prime_script_v_tl   script form: default vertical shift
+  %   \c_zmath_prime_script_h_tl   script form: default horizontal math-kern
+  % ============================================================================
+  \tl_const:Nn \c_zmath_prime_accent_v_tl { \zmath@prime@accent@v }
+  \tl_const:Nn \c_zmath_prime_accent_h_tl { \zmath@prime@accent@h }
+  \tl_const:Nn \c_zmath_prime_script_v_tl { \zmath@prime@script@v }
+  \tl_const:Nn \c_zmath_prime_script_h_tl { \zmath@prime@script@h }
 
   % ============================================================================
   % UNDERLINE STACKING CONSTANTS
@@ -353,6 +381,8 @@
   \box_new:N  \l__zmath_scratch_box
   \dim_new:N  \l__zmath_scratch_dim
   \dim_new:N  \l__zmath_sep_dim
+  % \tl_new:N   \l__zmath_prime_v_tl
+  % \tl_new:N   \l__zmath_prime_h_tl
 
   % ============================================================================
   % INTERNAL HELPERS
@@ -940,10 +970,10 @@
     }
 
   % ----------------------------------------------------------------------------
-  % \zprime *[n][offset]{symbol}
+  % \zprime *[n][v-offset][h-offset]{symbol}
   %   Adorns a symbol with n prime marks, either as an accent (default) or as
-  %   a superscript (star form).  The prime glyphs are scaled to 110% for
-  %   visibility.  An optional vertical offset fine-tunes placement.
+  %   a superscript (star form). The prime glyphs are scaled to 110% for
+  %   visibility. Optional vertical and horizontal offsets fine-tune placement.
   %
   %   No star:  accent form — primes sit above the symbol via \accentset,
   %             with a \vphantom strut to prevent line-height collapse.
@@ -951,36 +981,37 @@
   %
   %   ARGUMENTS
   %     star      switches to superscript mode
-  %     [n]       number of prime marks  (default: 1)
-  %     [offset]  vertical offset of the primes (default: -0.9ex in accent
-  %               mode; no adjustment in superscript mode)
+  %     [n]       number of prime marks          (default: 1)
+  %     [v-shift] vertical fine-tuning shift     (default: 0pt)
+  %     [h-shift] horizontal math-kern adjustment (default: 0mu)
   %     {symbol}  the base symbol to adorn
-  %
-  %   EXAMPLES
-  %     \zprime{f}             →  f  with one accent prime
-  %     \zprime[2]{g}          →  g  with two accent primes
-  %     \zprime*{f}            →  f' in superscript
-  %     \zprime*[2][0.1ex]{A}  →  A'' raised by 0.1ex
   % ----------------------------------------------------------------------------
-  \NewDocumentCommand \zprime { s O{1} O{} m }
+  \NewDocumentCommand \zprime { s O{1} O{0pt} O{0mu} m }
     {
       \IfBooleanTF {#1}
-        {% star — superscript primes
-          \tl_set:Nn \l_tmpa_tl { \__zprime_make:n {#2} }
-          #4 \sp
+        {% ==================== STARRED: SUPERSCRIPT MODE ====================
+          % Enclose the symbol tightly to prevent double superscript panics
+          {#5} \sp
             {
-              \tl_if_blank:nTF {#3}
-                { \l_tmpa_tl }
-                { \raisebox{#3}{\l_tmpa_tl} }
+              \mkern \zmath@prime@script@h
+              \mkern #4
+              \raisebox{\zmath@prime@script@v}{\raisebox{#3}{\__zprime_make:n {#2}}}
             }
         }
-        {% no star — accent primes via \accentset
-          \tl_set:Nn \l_tmpa_tl { \__zprime_make:n {#2} }
-          \tl_set:Nn \l_tmpb_tl { \tl_if_blank:nTF {#3} { -0.9ex } {#3} }
-          \vphantom { \raisebox{1.2ex}{\l_tmpa_tl} }
+        {% ================== UNSTARRED: ACCENTSET MODE ====================
+          \vphantom { \raisebox{1.2ex}{\__zprime_make:n {#2}} }
           \accentset
-            { \smash { \raisebox{\l_tmpb_tl}{\l_tmpa_tl} } }
-            {#4}
+            {
+              \smash
+                {
+                  \mkern \zmath@prime@accent@h
+                  \mkern #4
+                  % Stacking two raiseboxes naturally yields (default + user adjustment)
+                  % away from the baseline with perfect intuitive directionality.
+                  \raisebox{\zmath@prime@accent@v}{\raisebox{#3}{\__zprime_make:n {#2}}}
+                }
+            }
+            {{#5}}
         }
     }
 
