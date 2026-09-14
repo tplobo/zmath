@@ -338,7 +338,8 @@ The precise structural scale factor and horizontal tracking offset are governed 
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.8\linewidth
+    lefthand width=0.8\linewidth,
+    halign lower=center,
   }
   $f\zarg{x}$         % Standard scaled argument in text mode
   \nl
@@ -372,7 +373,8 @@ The absolute vertical layout dimensions are exposed globally via a unified key--
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.8\linewidth
+    lefthand width=0.8\linewidth,
+    halign lower=center,
   }
   $\zvec{u} = \vec{u} \ne \uline{u}$                  % zvec vs ulem command
   \nl
@@ -401,7 +403,8 @@ The macro evaluates ambient equation metadata silently under the hood. It execut
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.6\linewidth
+    lefthand width=0.6\linewidth,
+    %halign lower=center,
   }
   Equations \ref{eq:energy} and \ref{eq:force}
   show important results:
@@ -437,13 +440,14 @@ When omitted, positioning offsets naturally fallback to their global package def
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.75\linewidth
+    lefthand width=0.75\linewidth,
+    halign lower=center,
   }
   $\zprime{f} \ne \zprime*{f}$                % Accent vs superscript
   \nl
   $\zprime[2]{g} \ne \zprime*[2]{g}$          % Double accent
   \nl
-  \begin{gather}
+  \begin{gather*}
     \zprime[1][0pt][-20mu]{\int^{\infty}}     % Pushed left
     \ne
     \zprime[1]{\int^{\infty}}
@@ -451,12 +455,12 @@ When omitted, positioning offsets naturally fallback to their global package def
     \zprime*[1][-1ex][1mu]{\sum_j^{\infty}}   % Lowered and pushed right
     \ne
     \zprime*[1]{\sum_j^{\infty}}
-  \end{gather}
+  \end{gather*}
 \end{tcblisting}
 
-% % ------------------------------------------------------------------------------
-% \subsection{\cs{zcond} — evaluated-at bar}
-% % ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\subsection{\cs{zcond} — evaluated-at bar}
+% ------------------------------------------------------------------------------
 
 % \DescribeMacro{\zcond}
 % \begin{syntax}
@@ -497,9 +501,9 @@ When omitted, positioning offsets naturally fallback to their global package def
 
 % \[ \zcond[\int_0^t f\,ds]{t=T} \]
 
-% % ------------------------------------------------------------------------------
-% \subsection{\cs{zint} — configurable integral}
-% % ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\subsection{\cs{zint} — configurable integral}
+% ------------------------------------------------------------------------------
 
 % \DescribeMacro{\zint}
 % \begin{syntax}
@@ -570,9 +574,9 @@ When omitted, positioning offsets naturally fallback to their global package def
 % \[ \zint[\mathbb{R}^n][~][n] f\,d^nx \]
 % Inline: \zint[0][1] applied to~$f$.
 
-% % ------------------------------------------------------------------------------
-% \subsection{\cs{zfrac} — flexible fraction}
-% % ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\subsection{\cs{zfrac} — flexible fraction}
+% ------------------------------------------------------------------------------
 
 % \DescribeMacro{\zfrac}
 % \begin{syntax}
@@ -632,29 +636,31 @@ When omitted, positioning offsets naturally fallback to their global package def
 % $\zfrac[(\alpha+1)]{\beta}$ \quad
 % $\zfrac{\lambda}$
 
-% % ==============================================================================
-% \section{Combined Examples}
-% % ==============================================================================
+% ==============================================================================
+\section{Combined Examples}
+% ==============================================================================
 
-% \subsection{Heat equation solution}
+\subsection{Heat equation solution}
 
-% \begin{lstlisting}
-% \[
-%   u\zarg{x,t} = \zfrac{1}{\sqrt{4\pi\kappa t}}
-%   \zint[-\infty][{+\infty}]
-%     u_0\zarg{\xi} \exp\!\zarg{-\zfrac{(x-\xi)^2}{4\kappa t}}
-%   \zdiff{\xi}
-% \]
-% \end{lstlisting}
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.46\linewidth,
+    %halign lower=center,
+  }
+  Equation \ref{eq:green} applies the Green
+  function for the heat equation:
+  \begin{equation}
+    \label{eq:green}
+    u\zarg{x,t} =
+    \zfrac{\sqrt{4\pi\kappa t}}
+    \zint[-\infty][{+\infty}] u_0\zarg{\xi}
+    \cdot e^{-\zfrac{(x-\xi)^2}{4\kappa t}}
+    \zdiff{\xi}
+    \zpunct{,}
+  \end{equation}
+\end{tcblisting}
 
-% \[
-%   u\zarg{x,t} = \zfrac{1}{\sqrt{4\pi\kappa t}}
-%   \zint[-\infty][{+\infty}]
-%     u_0\zarg{\xi} \exp\!\zarg{-\zfrac{(x-\xi)^2}{4\kappa t}}
-%   \zdiff{\xi}
-% \]
-
-% \subsection{Tensor with four-way scripts and evaluation}
+\subsection{Tensor with four-way scripts and evaluation}
 
 % \begin{lstlisting}
 % \[
@@ -670,7 +676,7 @@ When omitted, positioning offsets naturally fallback to their global package def
 %   = \zfrac[R_{\mu\nu}]{\kappa}
 % \]
 
-% \subsection{Fluid mechanics: volume integral with vector field}
+\subsection{Fluid mechanics: volume integral with vector field}
 
 % \begin{lstlisting}
 % \[
@@ -726,16 +732,18 @@ When omitted, positioning offsets naturally fallback to their global package def
 % \cs{regex\_match:nnTF} and \cs{bool\_if:nTF} cannot safely run inside
 % speculative branches.
 
-% % ==============================================================================
-% \section{Change History}
-% % ==============================================================================
+% ==============================================================================
+\section{Change History}
+% ==============================================================================
 
-% \begin{description}
-%   \item[v1.0 (2025/01/01)] Initial public release.
-%     Commands: \cs{zscale}, \cs{zscript}, \cs{varsubsup}, \cs{zint},
-%     \cs{zfrac}, \cs{zarg}, \cs{zdiff}, \cs{zpunct}, \cs{zprime},
-%     \cs{zvec}, \cs{zmat}, \cs{zline}, \cs{zcond}.
-% \end{description}
+\begin{description}
+
+  \item[v1.0 (2025/01/01)] Initial public release.
+  \item[] Commands: \cs{zscale}, \cs{zscript}, \cs{varsubsup}, \cs{zint},
+    \cs{zfrac}, \cs{zarg}, \cs{zdiff}, \cs{zpunct}, \cs{zprime},
+    \cs{zvec}, \cs{zmat}, \cs{zline}, \cs{zcond}.
+
+\end{description}
 
 \clearpage
 \PrintIndex
