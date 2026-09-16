@@ -3,7 +3,7 @@
 
 \usepackage{zmath}
 
-\usepackage{hypdoc}
+\usepackage{hypdoc}     \hypersetup{hidelinks}
 \usepackage{listings}
 \usepackage{booktabs}
 \usepackage{xcolor}
@@ -23,6 +23,7 @@
   %\input{zmath-minted.tex}
 
 % ---- helpers for this doc ----
+% ---- helpers for this doc ----
 \newcommand{\nl}{\par\vspace{\baselineskip}}
 \newcommand{\pkg}[1]{\textsf{#1}}
 \newcommand{\opt}[1]{\texttt{#1}}
@@ -36,10 +37,18 @@
 \newenvironment{exrow}
   {\begin{tabular}{@{}l@{\quad$\to$\quad}l@{}}}
   {\end{tabular}}
+\makeatletter
+% \optval{suffix} prints the current value of \zmath@<suffix> (e.g.
+% \optval{prime@sep} for \zmath@prime@sep), as stored — already carrying its
+% unit, since package defaults are plain text like "0.7mu" or "-0.5ex".
+\newcommand{\optval}[1]{\texttt{\csname zmath@#1\endcsname}}
+\makeatother
 
 \EnableCrossrefs
 \CodelineIndex
 \RecordChanges
+
+
 
 % ---- document ----
 \begin{document}
@@ -131,7 +140,7 @@ The tables below define their dimensions, defaults, and structural layout impact
 \toprule
 Option & Default & Description \\
 \midrule
-\opt{scale} & \texttt{0.6} & Default scale factor for \cs{zscale} and starred script or limit arguments. \\
+\opt{scale} & \optval{scale} & Default scale factor for \cs{zscale} and starred script or limit arguments. \\
 \bottomrule
 \end{tabularx}
 
@@ -141,14 +150,14 @@ Option & Default & Description \\
 \toprule
 Option & Default & Description \\
 \midrule
-\opt{dot-scale} & \texttt{1.8} &
+\opt{dot-scale} & \optval{dot@scale} &
   Scale factor applied to \cs{cdot} by \cs{zscale} when rendering \cs{zdot}.
   Increase for a heavier dot, decrease to bring it closer to \cs{cdot}. \\
 \addlinespace
-\opt{dot-raise} & \texttt{-0.5ex} &
+\opt{dot-raise} & \optval{dot@raise} &
   Vertical offset applied after scaling to realign the dot on the math axis.
   Negative values shift the dot downward, compensating for the upward baseline
-  drift introduced by \cs{scalebox}.  Adjust if you change the base math font. \\
+  drift introduced by \cs{scalebox}. Adjust if you change the base math font. \\
 \bottomrule
 \end{tabularx}
 
@@ -158,8 +167,8 @@ Option & Default & Description \\
 \toprule
 Option & Default & Description \\
 \midrule
-\opt{arg-scale} & \texttt{0.9}  & Font scale factor applied directly to the parenthesised argument block. \\
-\opt{arg-kern}  & \texttt{-1mu} & Horizontal kerning inserted immediately before the opening parenthesis. \\
+\opt{arg-scale} & \optval{arg@scale} & Font scale factor applied directly to the parenthesised argument block. \\
+\opt{arg-kern}  & \optval{arg@kern}  & Horizontal kerning inserted immediately before the opening parenthesis. \\
 \bottomrule
 \end{tabularx}
 
@@ -169,24 +178,27 @@ Option & Default & Description \\
 \toprule
 Option & Default & Description \\
 \midrule
-\opt{line-depth}     & \texttt{3pt}   & Vertical baseline gap clearance from the symbol bottom to the first rule. \\
-\opt{line-thickness} & \texttt{0.4pt} & Absolute typographic thickness of each individual underline rule. \\
-\opt{line-sep}       & \texttt{1.2pt} & Explicit vertical air gap separation between consecutive stacked rules. \\
+\opt{line-depth}     & \optval{line@depth}     & Vertical baseline gap clearance from the symbol bottom to the first rule. \\
+\opt{line-thickness} & \optval{line@thickness} & Absolute typographic thickness of each individual underline rule. \\
+\opt{line-sep}       & \optval{line@sep}       & Explicit vertical air gap separation between consecutive stacked rules. \\
 \bottomrule
 \end{tabularx}
 
-% ------------------------------------------------------------------------------
-\subsection{Prime Accents (\cs{zprime})}
-% ------------------------------------------------------------------------------
+\subsection{Prime Marks (\cs{zprime})}
 
 \begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
 \toprule
 Option & Default & Description \\
 \midrule
-\opt{prime-accent-v} & \texttt{-1ex}  & Base vertical baseline clearance for accent-style prime marks relative to the symbol top. \\
-\opt{prime-accent-h} & \texttt{10mu}  & Baseline horizontal math-kern alignment shift for accent-style prime marks. \\
-\opt{prime-script-v} & \texttt{-1ex}  & Base vertical baseline adjustment for superscript-style prime marks relative to standard script height. \\
-\opt{prime-script-h} & \texttt{3mu}   & Baseline horizontal math-kern clearance for superscript-style prime marks. \\
+\opt{prime-sep}          & \optval{prime@sep}          & Mu-unit kern inserted between consecutive prime glyphs. Fine-grained; use a few mu to get a visible change. \\
+\opt{prime-scale-normal} & \optval{prime@scale@normal} & Scale factor applied to primes when the symbol being primed sits in display or text style. \\
+\opt{prime-scale-script} & \optval{prime@scale@script} & Scale factor applied to primes when the symbol being primed already sits inside a script (e.g.\ an exponent). \\
+\opt{prime-accent-v}     & \optval{prime@accent@v}     & Default vertical offset, accent form — a ratio of the prime cluster's own height. \\
+\opt{prime-accent-h}     & \optval{prime@accent@h}     & Default horizontal offset, accent form — a ratio of a \emph{single} prime glyph's width, independent of how many primes are drawn. \\
+\opt{prime-script-v}     & \optval{prime@script@v}     & Default vertical offset, superscript form (ratio of cluster height). \\
+\opt{prime-script-h}     & \optval{prime@script@h}     & Default horizontal offset, superscript form (ratio of single-glyph width). \\
+\opt{prime-clear-ht}     & \optval{prime@clear@ht}     & Minimum reserved strut height above the primes, as a ratio of the cluster's height. \\
+\opt{prime-clear-dp}     & \optval{prime@clear@dp}     & Minimum reserved strut depth below the primes (ratio). \\
 \bottomrule
 \end{tabularx}
 
@@ -422,44 +434,55 @@ The macro evaluates ambient equation metadata silently under the hood. It execut
 % ------------------------------------------------------------------------------
 
 \DescribeMacro{\zprime}
-The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks, which default to a single prime ($n=1$) if omitted. To maximize clarity and readability across varying display resolutions, the engine automatically scales the output glyph weights to 110\% of their natural font size. 
+The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks (default $n=1$). Its size automatically tracks the math style of the symbol being primed: primes are enlarged (\opt{prime-scale-normal}) in display or text style, and reduced (\opt{prime-scale-script}) when the symbol already sits inside a script — an exponent, a subscript, and so on. This makes \cs{zprime} safe to nest inside other scripts without looking oversized, and lets \cs{left}/\cs{right} delimiters around a primed expression size correctly, since the prime's real (unsmashed) height is what they measure.
 
 \begin{syntax}
-  \cs{zprime}\macroStar\macroOpt{n}\macroOpt{v-shift}\macroOpt{h-shift}\macroArg{symbol}
+  \cs{zprime}\macroStar\macroOpt{n}\macroOpt{v-ratio}\macroOpt{h-ratio}\macroArg{symbol}
 \end{syntax}
 
-The structural positioning mechanics are dictated by the presence of the optional modifier flag:
 \begin{itemize}[nosep]
-  \item \textbf{not starred} — renders an accent-style layout centered horizontally above the axis of the symbol using an internal \cs{accentset} routine. 
-  \item \textbf{starred} — switches the engine to a superscript-style layout, binding the prime marks conventionally via a trailing right-aligned \cs{sp} context.
+  \item \textbf{not starred} — accent-style layout, primes centered above the symbol as a group, regardless of the number of marks.
+  \item \textbf{starred} — superscript-style layout, primes flush to the symbol's right edge.
 \end{itemize}
 
-Fine-tuning is achieved via two consecutive optional parameters. The first modifier dictates a vertical \macroMeta{v-shift} (evaluated using absolute units like \texttt{ex} or \texttt{pt}), while the second handles a horizontal \macroMeta{h-shift} (evaluated strictly via math-kern \texttt{mu} units). Directionality is normalized globally: positive vertical values shift the primes upward, while positive horizontal values nudge them to the right.
-
-When omitted, positioning offsets naturally fallback to their global package defaults outlined in the options table below.
+The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ the package option for the chosen form) \emph{replace} \opt{prime-accent-v/h} or \opt{prime-script-v/h} for this call only, leaving every other call unaffected. Both are dimensionless ratios, so a given value looks identical at any math style or scale; this is especially useful for tall or wide nuclei — such as \cs{int} or \cs{sum} with their own limits — where the default offset may need a small local correction.
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.75\linewidth,
+    lefthand width=0.72\linewidth,
     halign lower=center,
   }
-  $\zprime{f} \ne \zprime*{f}$                % Accent vs superscript
+  $\zprime{x} \ne \zprime*{x}$              % accent vs superscript
   \nl
-  $\zprime[2]{g} \ne \zprime*[2]{g}$          % Double accent
+  $\zprime[2]{y} \ne \zprime*[2]{y}$        % double primes
   \nl
-  \begin{gather*}
-    \zprime[1][0pt][-20mu]{\int^{\infty}}     % Pushed left
-    \ne
-    \zprime[1]{\int^{\infty}}
-    \\
-    \zprime*[1][-1ex][1mu]{\sum_j^{\infty}}   % Lowered and pushed right
-    \ne
-    \zprime*[1]{\sum_j^{\infty}}
-  \end{gather*}
+  $e^{-\zprime{x}} \ne e^{-\zprime*{x}}$    % scriptsize
+  \nl \nl
+  $
+  \left(1 - \zprime{x}\right)^2             % \left and \right
+  \ne
+  \left(1 - \zprime*{x}\right)^2
+  $
+  \nl \nl \nl \nl \nl
+  $
+  \zprime[1][][-0.2]{\int^{\infty}}         % pushed left
+  \ne
+  \zprime{\int^{\infty}}
+  $
+  \nl \nl \nl
+  \begin{align*}
+    \zprime[3][][0.2]{\int^{\infty}}        % pushed right
+    & \ne
+    \zprime[3]{\int^{\infty}}
+    \\ \\
+    \zprime*[2][-1.3][0.1]{\sum_j^{\infty}} % pushed down and right
+    & \ne
+    \zprime*{\sum_j^{\infty}}
+  \end{align*}
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
-\subsection{\cs{zcond} — evaluated-at bar}
+\subsection{\cs{zcond} — bar for evaluation conditions}
 % ------------------------------------------------------------------------------
 
 % \DescribeMacro{\zcond}
@@ -644,7 +667,7 @@ When omitted, positioning offsets naturally fallback to their global package def
 
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.46\linewidth,
+    lefthand width=0.45\linewidth,
     %halign lower=center,
   }
   Equation \ref{eq:green} applies the Green
@@ -653,9 +676,13 @@ When omitted, positioning offsets naturally fallback to their global package def
     \label{eq:green}
     u\zarg{x,t} =
     \zfrac{\sqrt{4\pi\kappa t}}
-    \zint[-\infty][{+\infty}] u_0\zarg{\xi}
-    \cdot e^{-\zfrac{(x-\xi)^2}{4\kappa t}}
-    \zdiff{\xi}
+    \zint[-\infty][{+\infty}]
+    u_0\zarg{\zprime*{x}}
+    \cdot e^{-\zfrac
+        {\left( x-\zprime*{x} \right)^2}
+        {4\kappa t}
+    }
+    \zdiff{\zprime*{x}}
     \zpunct{,}
   \end{equation}
 \end{tcblisting}
