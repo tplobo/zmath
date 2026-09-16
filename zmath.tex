@@ -452,7 +452,7 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
     lefthand width=0.72\linewidth,
     halign lower=center,
   }
-  $\zprime{x} \ne \zprime*{x}$              % accent vs superscript
+  \zprime{x} $\ne$ \zprime*{x}              % accent vs superscript
   \nl
   $\zprime[2]{y} \ne \zprime*[2]{y}$        % double primes
   \nl
@@ -468,17 +468,21 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
   \zprime[1][][-0.2]{\int^{\infty}}         % pushed left
   \ne
   \zprime{\int^{\infty}}
+  \ne
+  \zprime{\int}^{\infty}
   $
   \nl \nl \nl
-  \begin{align*}
+  \begin{gather*}
     \zprime[3][][0.2]{\int^{\infty}}        % pushed right
-    & \ne
+    \ne
     \zprime[3]{\int^{\infty}}
+    \ne
+    \zprime[3]{\int}^{\infty}
     \\ \\
     \zprime*[2][-1.3][0.1]{\sum_j^{\infty}} % pushed down and right
-    & \ne
+    \ne
     \zprime*{\sum_j^{\infty}}
-  \end{align*}
+  \end{gather*}
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
