@@ -19,6 +19,10 @@ $bibtex_use = 2;  # Use biber (2) instead of bibtex (1)
 #$clean_ext = "auxlock nav snm vrb figlist fls fdb_latexmk listing";
 #$cleanup_mode = 2;  # Clean up auxiliary files
 
+# Makeindex settings
+#$makeindex_fudge = 1;
+$makeindex = 'makeindex -s gind.ist %O -o %D %S';
+
 
 #-----------------------------------------------------------------------
 # https://tug.ctan.org/support/latexmk/example_rcfiles/memoize_latexmkrc

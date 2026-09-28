@@ -60,7 +60,10 @@
       "command": "latexmk",
       "args": [
         //"-f",
-        //"-r .vscode/.latexmkrc", // Look for .latexmkrc file here
+        //---------
+        "-r",
+        ".vscode/.latexmkrc", // Look for .latexmkrc file here
+        //---------
         "-time",
         //"-rules",
         //"-recorder",

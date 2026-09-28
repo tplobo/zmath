@@ -23,8 +23,13 @@
   %\input{zmath-minted.tex}
 
 % ---- helpers for this doc ----
-% ---- helpers for this doc ----
-\newcommand{\nl}{\par\vspace{\baselineskip}}
+\newcommand{\nl}[1][1]{%
+  \ifmmode  \expandafter\\[#1\baselineskip]%
+  \else     \par\vspace{#1\baselineskip}%
+  \fi
+}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\ie}{\textit{i.e.}}
 \newcommand{\pkg}[1]{\textsf{#1}}
 \newcommand{\opt}[1]{\texttt{#1}}
 \newcommand{\macroMeta}[1]{\textit{\textlangle#1\textrangle}}
@@ -34,13 +39,36 @@
 \newenvironment{syntax}
   {\begin{quote}\ttfamily}
   {\end{quote}}
-\newenvironment{exrow}
-  {\begin{tabular}{@{}l@{\quad$\to$\quad}l@{}}}
-  {\end{tabular}}
-\makeatletter
-% \optval{suffix} prints the current value of \zmath@<suffix> (e.g.
-% \optval{prime@sep} for \zmath@prime@sep), as stored — already carrying its
-% unit, since package defaults are plain text like "0.7mu" or "-0.5ex".
+\newenvironment{macroTable}[1][]
+  {%                \begin{macroTable}[stretch]{width}{colspec}
+    \begingroup
+    \def\macroTable@stretch{#1}%
+    \ifx\macroTable@stretch\empty\else
+      \renewcommand{\arraystretch}{#1}%
+    \fi
+    \begin{center}
+  }
+  {%
+    \end{center}
+    \endgroup
+  }
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{M}{p{4.4cm} C{1.75cm} X} % set of columns for macroTable
+\newcommand{\macroWidth}{\textwidth}
+\newcommand{\macroRow}[1]{%
+  \addlinespace[1.1em]%
+  \multicolumn{3}{l}{\underline{#1}} \\%
+  \addlinespace[0.4em]%
+}
+\newcommand{\macroDisp}[1]{$ \displaystyle #1 $}
+% 
+\newcommand{\delimcmd}[2]{%         \delimcmd{name}{delim}
+    \texttt{\textbackslash #1#2}%   (typesets \name<delim> for '\cs{}')
+}
+\newcommand{\macroBar}[1]{\texttt{\textbackslash #1\textbar}}
+
+
+% \optval{suffix} prints \zmath@<suffix> with unit (e.g. \optval{prime@sep})
 \newcommand{\optval}[1]{\texttt{\csname zmath@#1\endcsname}}
 \makeatother
 
@@ -60,17 +88,7 @@
 \maketitle
 
 \begin{abstract}
-  The \pkg{zmath} package provides a unified, high-level interface for
-  advanced mathematical typesetting in \LaTeX.
-  It extends \pkg{amsmath}-style constructs with semantic, scalable, and
-  mode-independent commands optimised for engineering, physics, and applied
-  mathematics.
-  Key features include configurable integral notation with flexible limit
-  placement, a multi-style fraction command, auto-scaling subscripts and
-  superscripts, vector and matrix underline notation, and an
-  ``evaluated at'' bar command.
-  All commands work consistently in both display and inline math mode, and
-  most are safe in text mode via \cs{ensuremath} wrappers.
+  The \pkg{zmath} package provides a unified, high-level interface for advanced mathematical typesetting in \LaTeX. It extends \pkg{amsmath}-style constructs with semantic, scalable, and mode-independent commands optimised for engineering, physics, and applied mathematics. Key features include configurable integral notation with flexible limit placement, a multi-style fraction command, auto-scaling subscripts and superscripts, vector and matrix underline notation, and an ``evaluated at'' bar command. All commands work consistently in both display and inline math mode, and most are safe in text mode via \cs{ensuremath} wrappers.
 \end{abstract}
 
 \tableofcontents
@@ -80,8 +98,7 @@
 \section{Introduction}
 % ==============================================================================
 
-Classical \LaTeX\ math commands such as \cs{int}, \cs{frac}, and \cs{underbrace}
-are powerful but low-level. Writing readable source for an equation requires manual spacing kerns, sizing primitives, and mode switches that clutter the source and make it hard to refactor.
+Classical \LaTeX\ math commands such as \cs{int}, \cs{frac}, and \cs{underbrace} are powerful but low-level. Writing readable source for an equation requires manual spacing kerns, sizing primitives, and mode switches that clutter the source and make it hard to refactor.
 
 For this, \pkg{zmath} introduces semantic shorthands that hide this complexity:
 \begin{tcblisting}{
@@ -95,16 +112,9 @@ For this, \pkg{zmath} introduces semantic shorthands that hide this complexity:
     \zpunct{.}
   \end{equation}
 \end{tcblisting}
-Every command handles both display and inline modes automatically, respects
-the ambient math style, and exposes its tunable parameters as package options
-so the same source adapts to different fonts and house styles without changes
-to individual call sites.
+Every command handles both display and inline modes automatically, respects the ambient math style, and exposes its tunable parameters as package options so the same source adapts to different fonts and house styles without changes to individual call sites.
 
-The package is built on \pkg{expl3} and \pkg{xparse}, which are part of the
-\LaTeX\ kernel since 2020 and require no extra \cs{usepackage} declarations.
-The integral commands use XITS~Math glyphs for the integral symbols (loaded
-automatically at \cs{begin}\texttt{\{document\}}); the remainder of the math
-font is left to the user. I personally like:
+The package is built on \pkg{expl3} and \pkg{xparse}, which are part of the \LaTeX\ kernel since 2020 and require no extra \cs{usepackage} declarations. The integral commands use XITS~Math glyphs for the integral symbols (loaded automatically at \cs{begin}\texttt{\{document\}}); the remainder of the math font is left to the user. I personally like:
 \begin{syntax}
   \cs{setmathfont}\texttt{\{TeX Gyre DejaVu Math\}[Scale=0.85]}
 \end{syntax}
@@ -124,135 +134,335 @@ Required packages loaded automatically: \pkg{amsmath}, \pkg{unicode-math}, \pkg{
 \subsection{About this documentation}
 % ------------------------------------------------------------------------------
 
-The local macro \cs{nl} is used to add line breaks in the example boxes, so it has been colored grey to reduce visual impact.
+The local macro \cs{nl} is used to add line breaks in the example boxes, so it has been colored grey to reduce visual impact. Throughout this document, \cs{eg} and \cs{ie} are used as italicised shorthands for ``\eg{}'' and ``\ie{}''.
 
 % ==============================================================================
 \clearpage
 \section{Package Options}
 % ==============================================================================
 
-All tunable constants are exposed as key--value options via a unified interface.
-The tables below define their dimensions, defaults, and structural layout impact.
+All tunable constants are exposed as key--value options via a unified interface. The tables below define their dimensions, defaults, and structural layout impact.
 
 \subsection{General Configuration}
 
-\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
-\toprule
-Option & Default & Description \\
-\midrule
-\opt{scale} & \optval{scale} & Default scale factor for \cs{zscale} and starred script or limit arguments. \\
-\bottomrule
-\end{tabularx}
+\begin{macroTable}
+    \begin{tabularx}{\macroWidth}{M}
+    \hline\hline
+
+    Option
+        & Default
+        & Description
+    \\
+
+    \midrule
+
+    \opt{scale}
+        & \optval{scale}
+        & Default scale factor for \cs{zscale} and starred script or limit arguments.
+    \\
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
 
 \subsection{Dot Operator (\cs{zdot})}
 
-\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
-\toprule
-Option & Default & Description \\
-\midrule
-\opt{dot-scale} & \optval{dot@scale} &
-  Scale factor applied to \cs{cdot} by \cs{zscale} when rendering \cs{zdot}.
-  Increase for a heavier dot, decrease to bring it closer to \cs{cdot}. \\
-\addlinespace
-\opt{dot-raise} & \optval{dot@raise} &
-  Vertical offset applied after scaling to realign the dot on the math axis.
-  Negative values shift the dot downward, compensating for the upward baseline
-  drift introduced by \cs{scalebox}. Adjust if you change the base math font. \\
-\bottomrule
-\end{tabularx}
+\begin{macroTable}
+    \begin{tabularx}{\macroWidth}{M}
+    \hline\hline
+
+    Option
+        & Default
+        & Description
+    \\
+
+    \hline
+
+    \opt{dot-scale}
+        & \optval{dot@scale}
+        & Scale factor applied to \cs{cdot} by \cs{zscale} when rendering \cs{zdot}. Increase for a heavier dot, decrease to bring it closer to \cs{cdot}.
+    \\
+
+    \addlinespace
+
+    \opt{dot-raise}
+        & \optval{dot@raise}
+        & Vertical offset applied after scaling to realign the dot on the math axis. Negative values shift the dot downward, compensating for the upward baseline drift introduced by \cs{scalebox}. Adjust if you change the base math font.
+    \\
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
 
 \subsection{Function Argument Formatting (\cs{zarg})}
 
-\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
-\toprule
-Option & Default & Description \\
-\midrule
-\opt{arg-scale} & \optval{arg@scale} & Font scale factor applied directly to the parenthesised argument block. \\
-\opt{arg-kern}  & \optval{arg@kern}  & Horizontal kerning inserted immediately before the opening parenthesis. \\
-\bottomrule
-\end{tabularx}
+\begin{macroTable}
+    \begin{tabularx}{\macroWidth}{M}
+    \hline\hline
+
+    Option
+        & Default
+        & Description
+    \\
+
+    \midrule
+
+    \opt{arg-scale}
+        & \optval{arg@scale}
+        & Font scale factor applied directly to the parenthesised argument block.
+    \\
+
+    \opt{arg-kern}
+        & \optval{arg@kern}
+        & Horizontal kerning inserted immediately before the opening parenthesis.
+    \\
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
 
 \subsection{Underline Stacking (\cs{zline}, \cs{zvec}, \cs{zmat})}
 
-\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
-\toprule
-Option & Default & Description \\
-\midrule
-\opt{line-depth}     & \optval{line@depth}     & Vertical baseline gap clearance from the symbol bottom to the first rule. \\
-\opt{line-thickness} & \optval{line@thickness} & Absolute typographic thickness of each individual underline rule. \\
-\opt{line-sep}       & \optval{line@sep}       & Explicit vertical air gap separation between consecutive stacked rules. \\
-\bottomrule
-\end{tabularx}
+\begin{macroTable}
+    \begin{tabularx}{\macroWidth}{M}
+    \hline\hline
+
+    Option
+        & Default
+        & Description
+    \\
+
+    \midrule
+
+    \opt{line-depth}
+        & \optval{line@depth}
+        & Vertical baseline gap clearance from the symbol bottom to the first rule.
+    \\
+
+    \opt{line-thickness}
+        & \optval{line@thickness}
+        & Absolute typographic thickness of each individual underline rule.
+    \\
+
+    \opt{line-sep}
+        & \optval{line@sep}
+        & Explicit vertical air gap separation between consecutive stacked rules.
+    \\
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
 
 \subsection{Prime Marks (\cs{zprime})}
 
-\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
-\toprule
-Option & Default & Description \\
-\midrule
-\opt{prime-sep}          & \optval{prime@sep}          & Mu-unit kern inserted between consecutive prime glyphs. Fine-grained; use a few mu to get a visible change. \\
-\opt{prime-scale-normal} & \optval{prime@scale@normal} & Scale factor applied to primes when the symbol being primed sits in display or text style. \\
-\opt{prime-scale-script} & \optval{prime@scale@script} & Scale factor applied to primes when the symbol being primed already sits inside a script (e.g.\ an exponent). \\
-\opt{prime-accent-v}     & \optval{prime@accent@v}     & Default vertical offset, accent form — a ratio of the prime cluster's own height. \\
-\opt{prime-accent-h}     & \optval{prime@accent@h}     & Default horizontal offset, accent form — a ratio of a \emph{single} prime glyph's width, independent of how many primes are drawn. \\
-\opt{prime-script-v}     & \optval{prime@script@v}     & Default vertical offset, superscript form (ratio of cluster height). \\
-\opt{prime-script-h}     & \optval{prime@script@h}     & Default horizontal offset, superscript form (ratio of single-glyph width). \\
-\opt{prime-clear-ht}     & \optval{prime@clear@ht}     & Minimum reserved strut height above the primes, as a ratio of the cluster's height. \\
-\opt{prime-clear-dp}     & \optval{prime@clear@dp}     & Minimum reserved strut depth below the primes (ratio). \\
-\bottomrule
-\end{tabularx}
+\begin{macroTable}
+    \begin{tabularx}{\macroWidth}{M}
+    \hline\hline
+
+    Option
+        & Default
+        & Description
+    \\
+
+    \midrule
+
+    \opt{prime-sep}
+        & \optval{prime@sep}
+        & Mu-unit kern inserted between consecutive prime glyphs. Fine-grained; use a few mu to get a visible change.
+    \\
+
+    \opt{prime-scale-normal}
+        & \optval{prime@scale@normal}
+        & Scale factor applied to primes when the symbol being primed sits in display or text style.
+    \\
+
+    \opt{prime-scale-script}
+        & \optval{prime@scale@script}
+        & Scale factor applied to primes when the symbol being primed already sits inside a script (\eg{} an exponent).
+    \\
+
+    \opt{prime-accent-v}
+        & \optval{prime@accent@v}
+        & Default vertical offset, accent form — a ratio of the prime cluster's own height.
+    \\
+
+    \opt{prime-accent-h}
+        & \optval{prime@accent@h}
+        & Default horizontal offset, accent form — a ratio of a \emph{single} prime glyph's width, independent of how many primes are drawn.
+    \\
+
+    \opt{prime-script-v}
+        & \optval{prime@script@v}
+        & Default vertical offset, superscript form (ratio of cluster height).
+    \\
+
+    \opt{prime-script-h}
+        & \optval{prime@script@h}
+        & Default horizontal offset, superscript form (ratio of single-glyph width).
+    \\
+
+    \opt{prime-clear-ht}
+        & \optval{prime@clear@ht}
+        & Minimum reserved strut height above the primes, as a ratio of the cluster's height.
+    \\
+
+    \opt{prime-clear-dp}
+        & \optval{prime@clear@dp}
+        & Minimum reserved strut depth below the primes (ratio).
+    \\
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
 
 \subsection{Structured Integral System (\cs{zint})}
 
-\begin{tabularx}{\textwidth}{@{} p{4.6cm} p{1.75cm} X @{}}
-\toprule
-Option & Default & Description \\
-\midrule
-\addlinespace[1.1em]
-\multicolumn{3}{@{}l}{\underline{Integral Inter-Glyph Kerning (Display Mode)}} \\
-\addlinespace[0.4em]
-\opt{int-sep}                 & \texttt{-22mu}   & Horizontal kerning between consecutive \cs{intop} glyphs. \\
-\opt{int-dots-left}           & \texttt{-20mu}   & Horizontal kerning before the interior \cs{cdots} bridge. \\
-\opt{int-dots-right}          & \texttt{-10mu}   & Horizontal kerning after the interior \cs{cdots} bridge. \\
-\addlinespace[1.1em]
-\multicolumn{3}{@{}l}{\underline{Integral Inter-Glyph Kerning (Inline Mode)}} \\
-\addlinespace[0.4em]
-\opt{int-sep-inline}          & \texttt{-13mu}   & Horizontal kerning between consecutive \cs{intop} glyphs. \\
-\opt{int-dots-left-inline}    & \texttt{-10mu}   & Horizontal kerning before the interior \cs{cdots} bridge. \\
-\opt{int-dots-right-inline}   & \texttt{-6mu}    & Horizontal kerning after the interior \cs{cdots} bridge. \\
-\addlinespace[1.1em]
-\multicolumn{3}{@{}l}{\underline{Single Integral Side Limits (Display Mode)}} \\
-\addlinespace[0.4em]
-\opt{int-low-v}               & \texttt{-2.25ex} & Vertical offset adjustment applied to the lower limit script. \\
-\opt{int-low-h}               & \texttt{-1mu}    & Horizontal kerning adjustment applied to the lower limit script. \\
-\opt{int-up-v}                & \texttt{2.5ex}   & Vertical offset adjustment applied to the upper limit script. \\
-\opt{int-up-h}                & \texttt{-1mu}    & Horizontal kerning adjustment applied to the upper limit script. \\
-\addlinespace[1.1em]
-\multicolumn{3}{@{}l}{\underline{Stacked Limits (Display Mode)}} \\
-\addlinespace[0.4em]
-\opt{int-stack-low-h}         & \texttt{-24mu}   & Single integral: lower limit horizontal centering nudge. \\
-\opt{int-stack-up-h}          & \texttt{8mu}     & Single integral: upper limit horizontal centering nudge. \\
-\opt{int-cluster-stack-low-h} & \texttt{-24mu}   & Clustered integrals: lower limit horizontal centering nudge. \\
-\opt{int-cluster-stack-up-h}  & \texttt{8mu}     & Clustered integrals: upper limit horizontal centering nudge. \\
-\opt{int-oint-stack-low-h}    & \texttt{-22mu}   & Contour integral (\cs{oint}): lower limit horizontal centering nudge. \\
-\opt{int-oint-stack-up-h}     & \texttt{5mu}     & Contour integral (\cs{oint}): upper limit horizontal centering nudge. \\
-\addlinespace[1.1em]
-\multicolumn{3}{@{}l}{\underline{Cluster/Oint Side Limits (Display Mode)}} \\
-\addlinespace[0.4em]
-\opt{int-disp-low-h}          & \texttt{-20mu}   & Multi-integral/contour display layout: lower limit horizontal kern. \\
-\opt{int-disp-up-h}           & \texttt{-10mu}   & Multi-integral/contour display layout: upper limit horizontal kern. \\
-\addlinespace[1.1em]
-\multicolumn{3}{@{}l}{\underline{Integral Limits (Inline Mode)}} \\
-\addlinespace[0.4em]
-\opt{int-inline-low-h}        & \texttt{-7mu}    & Side-limit mode: lower limit horizontal script kern. \\
-\opt{int-inline-up-h}         & \texttt{-4mu}    & Side-limit mode: upper limit horizontal script kern. \\
-\opt{int-inline-stack-low-h}  & \texttt{-13mu}   & Stacked-limit mode: lower limit horizontal centering nudge. \\
-\opt{int-inline-stack-up-h}   & \texttt{6mu}     & Stacked-limit mode: upper limit horizontal centering nudge. \\
-\opt{int-inline-stack-low-v}  & \texttt{0.6ex}   & Stacked-limit mode: lower invisible vertical strut height. \\
-\opt{int-inline-stack-up-v}   & \texttt{0.8ex}   & Stacked-limit mode: upper invisible vertical strut height. \\
-\bottomrule
-\end{tabularx}
+\begin{macroTable}
+    \begin{tabularx}{\macroWidth}{M}
+    \hline\hline
 
+    Option
+        & Default
+        & Description
+    \\
+
+    \midrule
+
+    \macroRow{Integral Inter-Glyph Kerning (Display Mode)}
+
+    \opt{int-sep}
+        & \texttt{-22mu}
+        & Horizontal kerning between consecutive \cs{intop} glyphs.
+    \\
+
+    \opt{int-dots-left}
+        & \texttt{-20mu}
+        & Horizontal kerning before the interior \cs{cdots} bridge.
+    \\
+
+    \opt{int-dots-right}
+        & \texttt{-10mu}
+        & Horizontal kerning after the interior \cs{cdots} bridge.
+    \\
+
+    \macroRow{Integral Inter-Glyph Kerning (Inline Mode)}
+
+    \opt{int-sep-inline}
+        & \texttt{-13mu}
+        & Horizontal kerning between consecutive \cs{intop} glyphs.
+    \\
+
+    \opt{int-dots-left-inline}
+        & \texttt{-10mu}
+        & Horizontal kerning before the interior \cs{cdots} bridge.
+    \\
+
+    \opt{int-dots-right-inline}
+        & \texttt{-6mu}
+        & Horizontal kerning after the interior \cs{cdots} bridge.
+    \\
+
+    \macroRow{Single Integral Side Limits (Display Mode)}
+
+    \opt{int-low-v}
+        & \texttt{-2.25ex}
+        & Vertical offset adjustment applied to the lower limit script.
+    \\
+
+    \opt{int-low-h}
+        & \texttt{-1mu}
+        & Horizontal kerning adjustment applied to the lower limit script.
+    \\
+
+    \opt{int-up-v}
+        & \texttt{2.5ex}
+        & Vertical offset adjustment applied to the upper limit script.
+    \\
+
+    \opt{int-up-h}
+        & \texttt{-1mu}
+        & Horizontal kerning adjustment applied to the upper limit script.
+    \\
+
+    \macroRow{Stacked Limits (Display Mode)}
+
+    \opt{int-stack-low-h}
+        & \texttt{-24mu}
+        & Single integral: lower limit horizontal centering nudge.
+    \\
+
+    \opt{int-stack-up-h}
+        & \texttt{8mu}
+        & Single integral: upper limit horizontal centering nudge.
+    \\
+
+    \opt{int-cluster-stack-low-h}
+        & \texttt{-24mu}
+        & Clustered integrals: lower limit horizontal centering nudge.
+    \\
+
+    \opt{int-cluster-stack-up-h}
+        & \texttt{8mu}
+        & Clustered integrals: upper limit horizontal centering nudge.
+    \\
+
+    \opt{int-oint-stack-low-h}
+        & \texttt{-22mu}
+        & Contour integral (\cs{oint}): lower limit horizontal centering nudge.
+    \\
+
+    \opt{int-oint-stack-up-h}
+        & \texttt{5mu}
+        & Contour integral (\cs{oint}): upper limit horizontal centering nudge.
+    \\
+
+    \macroRow{Cluster/Oint Side Limits (Display Mode)}
+
+    \opt{int-disp-low-h}
+        & \texttt{-20mu}
+        & Multi-integral/contour display layout: lower limit horizontal kern.
+    \\
+
+    \opt{int-disp-up-h}
+        & \texttt{-10mu}
+        & Multi-integral/contour display layout: upper limit horizontal kern.
+    \\
+
+    \macroRow{Integral Limits (Inline Mode)}
+
+    \opt{int-inline-low-h}
+        & \texttt{-7mu}
+        & Side-limit mode: lower limit horizontal script kern.
+    \\
+
+    \opt{int-inline-up-h}
+        & \texttt{-4mu}
+        & Side-limit mode: upper limit horizontal script kern.
+    \\
+
+    \opt{int-inline-stack-low-h}
+        & \texttt{-13mu}
+        & Stacked-limit mode: lower limit horizontal centering nudge.
+    \\
+
+    \opt{int-inline-stack-up-h}
+        & \texttt{6mu}
+        & Stacked-limit mode: upper limit horizontal centering nudge.
+    \\
+
+    \opt{int-inline-stack-low-v}
+        & \texttt{0.6ex}
+        & Stacked-limit mode: lower invisible vertical strut height.
+    \\
+
+    \opt{int-inline-stack-up-v}
+        & \texttt{0.8ex}
+        & Stacked-limit mode: upper invisible vertical strut height.
+    \\
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
 
 % ==============================================================================
 \clearpage
@@ -264,7 +474,7 @@ Option & Default & Description \\
 % ------------------------------------------------------------------------------
 
 \DescribeMacro{\zscale}
-The \cs{zscale} utility scales an arbitrary \macroMeta{math} token vector uniformly by a given \macroMeta{factor}. If the optional modifier is omitted, the engine defaults to the global \opt{scale} package value (initially \texttt{0.6}). This way it avoids \cs{scriptscriptstyle}, that does not look very good.  The macro is inherently safe for direct deployment across both math configurations and ambient text strings via an internal \cs{ensuremath} boundary context:
+The \cs{zscale} utility scales an arbitrary \macroMeta{math} token vector uniformly by a given \macroMeta{factor}. If the optional modifier is omitted, the engine defaults to the global \opt{scale} package value (initially \optval{scale}). This way it avoids \cs{scriptscriptstyle}, that does not look very good. The macro is inherently safe for direct deployment across both math configurations and ambient text strings via an internal \cs{ensuremath} boundary context:
 
 \begin{syntax}
   \cs{zscale}\macroOpt{factor}\macroArg{math}
@@ -274,7 +484,7 @@ The \cs{zscale} utility scales an arbitrary \macroMeta{math} token vector unifor
     zmathex,
     lefthand width=0.8\linewidth
   }
-  $A_{\zscale{XYZ}}$       % 60% scaling
+  $A_{\zscale{XYZ}}$       % default scaling
   \nl
   $A_{\zscale[0.8]{XYZ}}$  % 80% scaling
   \nl
@@ -310,20 +520,13 @@ To maintain typographic flexibility, placing a \macroStar\ modifier immediately 
 % ------------------------------------------------------------------------------
 
 \DescribeMacro{\zdot}
-The \cs{zdot} command produces a visually heavier centred dot for use as a
-vector or tensor dot-product operator, offering a clear typographic distinction
-from the standard \cs{cdot}. The glyph is constructed by scaling \cs{cdot} to
-180\% via \cs{zscale} and nudging it downward by \texttt{-0.5ex} via
-\cs{raisebox} to compensate for the upward baseline drift that \cs{scalebox}
-introduces in math mode. The command is declared as \cs{mathbin} so that
-surrounding spacing follows binary-operator conventions.
+The \cs{zdot} command produces a visually heavier centred dot for use as a vector or tensor dot-product operator, offering a clear typographic distinction from the standard \cs{cdot}. The glyph is constructed by scaling \cs{cdot} to 180\% via \cs{zscale} and nudging it downward by \texttt{-0.5ex} via \cs{raisebox} to compensate for the upward baseline drift that \cs{scalebox} introduces in math mode. The command is declared as \cs{mathbin} so that surrounding spacing follows binary-operator conventions.
 
 \begin{syntax}
   \cs{zdot}
 \end{syntax}
 
-The \cs{zdot} command takes no arguments. Place it between operands exactly as you would
-\cs{cdot} or \cs{times}.
+The \cs{zdot} command takes no arguments. Place it between operands exactly as you would \cs{cdot} or \cs{times}.
 
 \begin{tcblisting}{
     zmathex,
@@ -421,11 +624,10 @@ The macro evaluates ambient equation metadata silently under the hood. It execut
   Equations \ref{eq:energy} and \ref{eq:force}
   show important results:
   \begin{gather}
-    \label{eq:energy} E = mc^2 \zpunct{,}
+    \label{eq:energy} E = mc^2      \zpunct{,}
     \\
     \label{eq:force}
-    \vec{F} = m \cdot \vec{a}
-    \zpunct{.}
+    \vec{F} = m \cdot \vec{a}       \zpunct{.}
   \end{gather}
 \end{tcblisting}
 
@@ -434,18 +636,16 @@ The macro evaluates ambient equation metadata silently under the hood. It execut
 % ------------------------------------------------------------------------------
 
 \DescribeMacro{\zprime}
-The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks (default $n=1$). Its size automatically tracks the math style of the symbol being primed: primes are enlarged (\opt{prime-scale-normal}) in display or text style, and reduced (\opt{prime-scale-script}) when the symbol already sits inside a script — an exponent, a subscript, and so on. This makes \cs{zprime} safe to nest inside other scripts without looking oversized, and lets \cs{left}/\cs{right} delimiters around a primed expression size correctly, since the prime's real (unsmashed) height is what they measure.
+The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks (default $n=1$). Its size automatically tracks the math style of the symbol being primed: primes are enlarged (\opt{prime-scale-normal}) in display or text style, and reduced (\opt{prime-scale-script}) when the symbol already sits inside a script — \ie{} an exponent, a subscript, and so on. This makes \cs{zprime} safe to nest inside other scripts without looking oversized, and lets \cs{left}/\cs{right} delimiters around a primed expression size correctly, since the prime's real (unsmashed) height is what they measure.
 
 \begin{syntax}
   \cs{zprime}\macroStar\macroOpt{n}\macroOpt{v-ratio}\macroOpt{h-ratio}\macroArg{symbol}
 \end{syntax}
 
 \begin{itemize}[nosep]
-  \item \textbf{not starred} — accent-style layout, primes centered above the symbol as a group, regardless of the number of marks.
-  \item \textbf{starred} — superscript-style layout, primes flush to the symbol's right edge.
+  \item \textbf{none (-)} — accent-style layout, primes centered above the symbol as a group, regardless of the number of marks.
+  \item \textbf{one (\macroStar)} — superscript-style layout, primes flush to the symbol's right edge.
 \end{itemize}
-
-The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ the package option for the chosen form) \emph{replace} \opt{prime-accent-v/h} or \opt{prime-script-v/h} for this call only, leaving every other call unaffected. Both are dimensionless ratios, so a given value looks identical at any math style or scale; this is especially useful for tall or wide nuclei — such as \cs{int} or \cs{sum} with their own limits — where the default offset may need a small local correction.
 
 \begin{tcblisting}{
     zmathex,
@@ -457,13 +657,13 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
   $\zprime[2]{y} \ne \zprime*[2]{y}$        % double primes
   \nl
   $e^{-\zprime{x}} \ne e^{-\zprime*{x}}$    % scriptsize
-  \nl \nl
+  \nl[2]
   $
   \left(1 - \zprime{x}\right)^2             % \left and \right
   \ne
   \left(1 - \zprime*{x}\right)^2
   $
-  \nl \nl \nl \nl \nl
+  \nl[5]
   $
   \zprime[1][][-0.2]{\int^{\infty}}         % pushed left
   \ne
@@ -471,14 +671,23 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
   \ne
   \zprime{\int}^{\infty}
   $
-  \nl \nl \nl
+\end{tcblisting}
+
+The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, \ie{} the package option for the chosen form) \emph{replace} \opt{prime-accent-v/h} or \opt{prime-script-v/h} for this call only, leaving every other call unaffected. Both are dimensionless ratios, so a given value looks identical at any math style or scale. This is especially useful for tall or wide nuclei — such as \cs{int} or \cs{sum} with/without their own limits — where the default offset may need a small, local correction.
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.72\linewidth,
+    halign lower=center,
+  }  
+  \nl
   \begin{gather*}
     \zprime[3][][0.2]{\int^{\infty}}        % pushed right
     \ne
     \zprime[3]{\int^{\infty}}
     \ne
     \zprime[3]{\int}^{\infty}
-    \\ \\
+    \nl[2.5]
     \zprime*[2][-1.3][0.1]{\sum_j^{\infty}} % pushed down and right
     \ne
     \zprime*{\sum_j^{\infty}}
@@ -486,47 +695,159 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
-\subsection{\cs{zcond} — bar for evaluation conditions}
+\subsection{\cs{zfrac} — flexible fraction}
 % ------------------------------------------------------------------------------
 
-% \DescribeMacro{\zcond}
-% \begin{syntax}
-% \cs{zcond} \macroStar\macroStar\macroStar\macroStar \macroOpt{expr} \macroArg{condition}
-% \end{syntax}
+\DescribeMacro{\zfrac}
+The \cs{zfrac} utility typesets a fraction whose visual style and argument parenthesisation are controlled independently, by stars and by the choice of delimiter around each argument. If only one argument is supplied, it is treated as the denominator and the numerator defaults to \texttt{1}. The entire output is always wrapped in \cs{ensuremath}, so \cs{zfrac} is safe in text, inline and display mode, and its operands may themselves freely contain math (\eg{} Greek letters, radicals) even when called from plain text. It has no package options.
 
-% Typesets an ``evaluated at'' vertical bar $|_{\text{condition}}$.
-% If \macroMeta{expr} is supplied and no stars are given, the bar is
-% auto-sized using \cs{left.}\,\ldots\,\cs{right|}.
-% Manual stars override auto-sizing with a fixed \cs{big}/\cs{Big}/\cs{bigg}/\cs{Bigg} step.
+\begin{syntax}
+  \cs{zfrac}\macroStar\macroStar\macroOpt{num}\macroArg{num}\macroOpt{den}\macroArg{den}
+\end{syntax}
 
-% \paragraph{Bar sizing.}
-% \begin{itemize}[noitemsep]
-%   \item No stars, no \macroMeta{expr} — script-size \texttt{|}
-%   \item No stars, with \macroMeta{expr} — auto \cs{left.}\,\macroMeta{expr}\,\cs{right|}
-%   \item \macroStar\ — \cs{big|}
-%   \item \macroStar\macroStar\ — \cs{Big|}
-%   \item \macroStar\macroStar\macroStar\ — \cs{bigg|}
-%   \item \macroStar\macroStar\macroStar\macroStar\ — \cs{Bigg|}
-% \end{itemize}
+\begin{itemize}[nosep]
+  \item \textbf{none (-)} — standard \cs{frac} layout.
+  \item \textbf{one (\macroStar)} — oblique \cs{nicefrac} layout, suited to inline use.
+  \item \textbf{two (\macroStar\macroStar)} — slash notation, \macroMeta{num}\texttt{/}\macroMeta{den}.
+\end{itemize}
 
-% When stars are given, \macroMeta{expr} is printed as-is before the fixed-size bar
-% (no automatic \cs{left}/\cs{right} wrapping).
-% The \macroMeta{condition} subscript is always scaled by \cs{zscale} in the
-% no-star path; it is not scaled when stars are present.
+Each argument may be given in braces (\macroArg{x}, plain) or in brackets (\macroOpt{x}, parenthesised, \ie{} wrapped in \cs{left(}\,\ldots\,\cs{right)}). The two delimiter choices are independent, so \eg{} only the denominator may be parenthesised while the numerator is left plain.
 
-% \begin{lstlisting}
-% $\zcond{x=0}$
-% $\zcond[f(x)]{x=0}$
-% $\zcond**[\frac{df}{dx}]{x=0}$
-% \[ \zcond\left[\int_0^t f\,ds\right]{t=T} \]
-% \end{lstlisting}
+\begin{macroTable}[2]
+    \begin{tabularx}{.95\macroWidth}{M}
+    \hline\hline
 
-% \medskip\noindent\textbf{Output:}\quad
-% $\zcond{x=0}$\quad
-% $\zcond[f(x)]{x=0}$\quad
-% $\zcond**[\frac{df}{dx}]{x=0}$
+    &&\\[-7ex]
+    Source
+        & Output
+        & Meaning
+    \\[-1ex]
 
-% \[ \zcond[\int_0^t f\,ds]{t=T} \]
+    \midrule
+
+    \cs{zfrac}\texttt{\{n\}\{d\}}
+        & \macroDisp{ \zfrac{n}{d} }
+        & plain numerator, plain denominator
+    \\
+
+    \cs{zfrac}\texttt{\{n\}[d]}
+        & \macroDisp{ \zfrac{n}[d] }
+        & plain numerator, parenthesised denominator
+    \\
+
+    \cs{zfrac}\texttt{[n]\{d\}}
+        & \macroDisp{ \zfrac[n]{d} }
+        & parenthesised numerator, plain denominator
+    \\
+
+    \cs{zfrac}\texttt{[n][d]}
+        & \macroDisp{ \zfrac[n][d] }
+        & both parenthesised
+    \\
+
+    \cs{zfrac}\texttt{\{d\}}
+        & \macroDisp{ \zfrac{d} }
+        & single plain arg $\Rightarrow$ denominator, numerator = 1
+    \\
+
+    \cs{zfrac}\texttt{[d]}
+        & \macroDisp{ \zfrac[d] }
+        & single bracket arg $\Rightarrow$ denominator, numerator = 1
+    \\[1ex]
+
+    \hline\hline
+    \end{tabularx}
+\end{macroTable}
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.8\linewidth,
+    halign lower=center,
+  }
+  \zfrac{\alpha}{\beta}             % standard frac
+  \nl
+  \zfrac*{x}{y}                     % nicefrac
+  \nl
+  \zfrac**{x}{y}                    % slash
+  \nl
+  $\zfrac{\alpha}[\beta+1]$         % parenthesise denominator
+  \nl
+  $\zfrac[\alpha+1]{\beta}$         % parenthesise numerator
+  \nl
+  $\zfrac{\lambda}$                 % inverse
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\subsection{\cs{zcond} — bar to represent evaluation conditions}
+% ------------------------------------------------------------------------------
+
+\DescribeMacro{\zcond}
+The \cs{zcond} utility typesets a vertical bar to represent evaluation conditions, with \macroMeta{condition} as a subscript. When \macroMeta{expr} is supplied and no stars are given, the bar auto-sizes via \cs{left.}\,\macroMeta{expr}\,\macroBar{right}, tracking \macroMeta{expr}'s height. Each star instead selects a fixed bar size, in which case \macroMeta{expr} is printed as-is, without \cs{left}/\cs{right} wrapping. It is compatible with text, inline and display modes, wrapping its output in \cs{ensuremath}. It has no package options.
+
+\begin{syntax}
+  \cs{zcond}\macroStar\macroStar\macroStar\macroStar\macroOpt{expr}\macroArg{condition}
+\end{syntax}
+
+\begin{itemize}[nosep]
+  \item \textbf{none (-)} — auto-sized bar.
+  \item \textbf{one (\macroStar)} — fixed \macroBar{big}.
+  \item \textbf{two (\macroStar\macroStar)} — fixed \macroBar{Big}.
+  \item \textbf{three (\macroStar\macroStar\macroStar)} — fixed \macroBar{bigg}.
+  \item \textbf{four (\macroStar\macroStar\macroStar\macroStar)} — fixed \macroBar{Bigg}.
+\end{itemize}
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  \zcond{x=0}\zcond*{x=0}\zcond**{x=0}\zcond***{x=0}\zcond****{x=0}
+\end{tcblisting}
+
+The \macroMeta{condition} subscript is scaled by \cs{zscale} only in the auto-sized (no-star) path; it is printed at full size whenever any star is given.
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  $\zfrac{df}{dx} \zcond{x=0}$          % default size
+  \nl
+  $\zcond[\zfrac{df}{dx}]{x=0}$         % auto-sized
+  \nl
+  $\zcond**[\zfrac{df}{dx}]{x=0}$       % fixed \Big|
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\subsection{\cs{zdiff} — differential or derivative}
+% ------------------------------------------------------------------------------
+
+\DescribeMacro{\zdiff}
+The \cs{zdiff} utility typesets either a differential or a derivative operator with respect to \macroMeta{var}, optionally raised to a given \macroMeta{order}. Omitting \macroMeta{order} defaults to a first differential or derivative. It is compatible with text, inline and display modes, wrapping its output in \cs{ensuremath}. It has no package options.
+
+\begin{syntax}
+  \cs{zdiff}\macroStar\texttt{t*}\macroOpt{order}\macroArg{var}
+\end{syntax}
+
+\begin{itemize}[nosep]
+  \item \textbf{none (-)} — differential, $\text{d}\macroMeta{var}$, raised to \macroMeta{order} if given.
+  \item \textbf{one (\macroStar)} — derivative, as a standard \cs{frac}.
+  \item \textbf{two (\macroStar\macroStar)} — derivative, as an oblique \cs{nicefrac}.
+\end{itemize}
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  \zdiff{x}                                 % differential
+  \nl
+  \zdiff[2]{x}                              % differential
+  \nl
+  $\zdiff*{x}f \ne \zdiff*[2]{x}f$          % derivatives, \frac
+  \nl
+  $\zdiff**{x}(f) \ne \zdiff**[2]{x}(f)$    % derivatives, \nicefrac
+\end{tcblisting}
 
 % ------------------------------------------------------------------------------
 \subsection{\cs{zint} — configurable integral}
@@ -601,71 +922,23 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
 % \[ \zint[\mathbb{R}^n][~][n] f\,d^nx \]
 % Inline: \zint[0][1] applied to~$f$.
 
-% ------------------------------------------------------------------------------
-\subsection{\cs{zfrac} — flexible fraction}
-% ------------------------------------------------------------------------------
-
-% \DescribeMacro{\zfrac}
-% \begin{syntax}
-% \cs{zfrac} \macroStar\macroStar \macroOpt{num} \macroArg{num} \macroOpt{den} \macroArg{den}
-% \end{syntax}
-
-% Flexible fraction whose style and parenthesisation are controlled by
-% stars and argument delimiters.
-% If only one argument is supplied it is treated as the denominator and
-% the numerator defaults to 1.
-
-% \paragraph{Style (stars).}
-% \begin{itemize}[noitemsep]
-%   \item No star — standard \cs{frac} (wrapped in \cs{ensuremath} outside math).
-%   \item \macroStar\ — oblique \cs{nicefrac}, suitable inline.
-%   \item \macroStar\macroStar\ — slash notation: \macroMeta{n}/\macroMeta{d}.
-% \end{itemize}
-
-% \paragraph{Argument delimiters.}
-% \begin{itemize}[noitemsep]
-%   \item \macroArg{x} — plain, no parentheses.
-%   \item \macroOpt{x} — wrapped in \cs{left(}\,\ldots\,\cs{right)} in math mode,
-%         plain \texttt{()} outside math.
-% \end{itemize}
-
-% \paragraph{Call forms.}
-
-% \begin{center}
-% \begin{tabular}{@{}ll@{}}
-% \toprule
-% Source & Meaning \\
-% \midrule
-% \cs{zfrac}\texttt{\{n\}\{d\}} & plain numerator, plain denominator \\
-% \cs{zfrac}\texttt{\{n\}[d]}   & plain numerator, parenthesised denominator \\
-% \cs{zfrac}\texttt{[n]\{d\}}   & parenthesised numerator, plain denominator \\
-% \cs{zfrac}\texttt{[n][d]}     & both parenthesised \\
-% \cs{zfrac}\texttt{\{d\}}      & single plain arg $\Rightarrow$ denominator, numerator = 1 \\
-% \cs{zfrac}\texttt{[d]}        & single bracket arg $\Rightarrow$ denominator, numerator = 1 \\
-% \bottomrule
-% \end{tabular}
-% \end{center}
-
-% \begin{lstlisting}
-% $\zfrac{\alpha}{\beta}$          % standard frac
-% $\zfrac*{\alpha}{\beta}$         % nicefrac
-% $\zfrac**{\alpha}{\beta}$        % slash
-% $\zfrac{\alpha}[\beta+1]$        % parenthesise denominator
-% $\zfrac[(\alpha+1)]{\beta}$      % parenthesise numerator
-% $\zfrac{\lambda}$                % 1/lambda
-% \end{lstlisting}
-
-% \medskip\noindent\textbf{Output:}\quad
-% $\zfrac{\alpha}{\beta}$ \quad
-% $\zfrac*{\alpha}{\beta}$ \quad
-% $\zfrac**{\alpha}{\beta}$ \quad
-% $\zfrac{\alpha}[\beta+1]$ \quad
-% $\zfrac[(\alpha+1)]{\beta}$ \quad
-% $\zfrac{\lambda}$
 
 % ==============================================================================
 \section{Combined Examples}
 % ==============================================================================
+
+\subsection{Fundamental theorem of calculus}
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.5\linewidth,
+    halign lower=center,
+  }
+  \begin{gather*}
+    \zint[a][b] f(x) \, \zdiff{x} =
+    F(x)\zcond**{x=b} - F(x)\zcond**{x=a}
+  \end{gather*}
+\end{tcblisting}
 
 \subsection{Heat equation solution}
 
@@ -682,7 +955,8 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
     \zfrac{\sqrt{4\pi\kappa t}}
     \zint[-\infty][{+\infty}]
     u_0\zarg{\zprime*{x}}
-    \cdot e^{-\zfrac
+    \cdot e^{
+        -\zfrac
         {\left( x-\zprime*{x} \right)^2}
         {4\kappa t}
     }
@@ -691,21 +965,20 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
   \end{equation}
 \end{tcblisting}
 
-\subsection{Tensor with four-way scripts and evaluation}
+\subsection{Tensor with four-way scripts and evaluation bar}
 
-% \begin{lstlisting}
-% \[
-%   \zscript[\mu][\nu]{R}[\alpha][\beta]
-%   \zcond[\,]{x=0}
-%   = \zfrac[R_{\mu\nu}]{\kappa}
-% \]
-% \end{lstlisting}
-
-% \[
-%   \zscript[\mu][\nu]{R}[\alpha][\beta]
-%   \zcond[\,]{x=0}
-%   = \zfrac[R_{\mu\nu}]{\kappa}
-% \]
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.6\linewidth,
+  }
+  Ricci tensor components,
+  evaluated at the origin:
+  \[
+    \zscript[\mu][\nu]{Ri}[\alpha][\beta]
+    \zcond**[\,]{x=0}
+    = \zfrac[\zscript{Ri}[\mu\nu]]{\kappa}
+  \]
+\end{tcblisting}
 
 \subsection{Fluid mechanics: volume integral with vector field}
 
@@ -735,7 +1008,7 @@ The optional \macroMeta{v-ratio} and \macroMeta{h-ratio} (default: empty, i.e.\ 
 % \end{lstlisting}
 % to provide the integral glyphs.
 % The base math font is not touched; use \cs{setmathfont} in your preamble
-% (e.g.\ \verb|\setmathfont{TeX Gyre DejaVu Math}[Scale=0.85]|) before
+% (\eg\ \verb|\setmathfont{TeX Gyre DejaVu Math}[Scale=0.85]|) before
 % loading \pkg{zmath}.
 
 % \subsection{Mode safety}

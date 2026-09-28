@@ -470,6 +470,151 @@
 \ExplSyntaxOff
 
 % ==============================================================================
+% \zfrac * * [num] {num} [den] {den}
+% ------------------------------------------------------------------------------
+% Flexible fraction. {x} = plain, [x] = parenthesised. Single argument is
+% treated as denominator (numerator defaults to 1). Star: \nicefrac.
+% Double star: slash notation n/d. No star: \frac. The whole output is
+% ALWAYS wrapped in \ensuremath, regardless of style, so operands may
+% contain math (\alpha, \sqrt{...}, etc.) even when \zfrac is called from
+% text mode — parenthesisation via \left(\right) then also stays valid,
+% since it always executes inside guaranteed math. Safe in text, inline,
+% and display mode.
+%
+% This section has no package options: unlike \zline or \zprime, \zfrac's
+% layout is fully determined by its stars and its argument delimiters, so
+% there is nothing left to tune.
+%
+%   \zfrac{n}{d}   \zfrac{n}[d]   \zfrac[n]{d}   \zfrac[n][d]   \zfrac[d]
+% ==============================================================================
+
+\ExplSyntaxOn
+
+  \tl_new:N   \l__zmath_frac_num_tl
+  \tl_new:N   \l__zmath_frac_den_tl
+
+  \bool_new:N \l__zmath_frac_num_paren_bool
+  \bool_new:N \l__zmath_frac_den_paren_bool
+  \bool_new:N \l__zmath_frac_den_present_bool
+  % NOTE: \l__zmath_frac_den_present_bool is unconditionally set true by
+  % \__zmath_frac_parse:nnnnnn below, so the "no denominator" branch in
+  % \__zmath_frac_render:nn is currently dead code. Potentially useful
+  % if a "numerator-only" call form is proves needed in the future.
+
+  % wraps {math} in \left( \right); always called from within \ensuremath,
+  % so plain math-mode delimiters are safe regardless of the caller's mode
+  \cs_new:Npn \__zmath_frac_paren:n #1
+    { \left( #1 \right) }
+
+  % renders one operand — #1 the paren-bool controlling it, #2 its token
+  % list — parenthesising it via \__zmath_frac_paren:n when #1 is true
+  \cs_new:Npn \__zmath_frac_arg:Nn #1 #2
+    {
+      \bool_if:NTF #1
+        { \__zmath_frac_paren:n {#2} }
+        {#2}
+    }
+
+  % dispatches to the requested style once the numerator/denominator and
+  % their paren-bools have been set by \__zmath_frac_parse:nnnnnn —
+  % #1 star (nicefrac/slash)  #2 double-star (slash)
+  \cs_new:Npn \__zmath_frac_render:nn #1 #2
+    {
+      \bool_if:NF \l__zmath_frac_den_present_bool
+        { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+        {
+          \IfBooleanTF {#1}
+            {
+              \IfBooleanTF {#2}
+                {
+                  \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl }
+                  /
+                  \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl }
+                }
+                {
+                  \nicefrac
+                    { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+                    { \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl } }
+                }
+            }
+            {
+              \frac
+                { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+                { \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl } }
+            }
+        }
+    }
+
+  % parses the four o g o g arguments passed by \zfrac into the num/den
+  % token lists and their paren-bools, covering every {}/[] combination
+  \cs_new_protected:Npn \__zmath_frac_parse:nnnnnn #1 #2 #3 #4 #5 #6
+    {
+      \IfNoValueTF {#3}
+        {
+          \IfNoValueTF {#5}
+            {
+              \IfNoValueTF {#6}
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl { 1 }
+                  \bool_set_false:N \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#4}
+                  \bool_set_false:N \l__zmath_frac_den_paren_bool
+                }
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl {#4}
+                  \bool_set_false:N \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#6}
+                  \bool_set_false:N \l__zmath_frac_den_paren_bool
+                }
+            }
+            {
+              \tl_set:Nn \l__zmath_frac_num_tl {#4}
+              \bool_set_false:N \l__zmath_frac_num_paren_bool
+              \bool_set_true:N  \l__zmath_frac_den_present_bool
+              \tl_set:Nn \l__zmath_frac_den_tl {#5}
+              \bool_set_true:N  \l__zmath_frac_den_paren_bool
+            }
+        }
+        {
+          \IfNoValueTF {#4}
+            {
+              \IfNoValueTF {#5}
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl { 1 }
+                  \bool_set_false:N \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#3}
+                  \bool_set_true:N  \l__zmath_frac_den_paren_bool
+                }
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl {#3}
+                  \bool_set_true:N  \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#5}
+                  \bool_set_true:N  \l__zmath_frac_den_paren_bool
+                }
+            }
+            {
+              \tl_set:Nn \l__zmath_frac_num_tl {#3}
+              \bool_set_true:N  \l__zmath_frac_num_paren_bool
+              \bool_set_true:N  \l__zmath_frac_den_present_bool
+              \tl_set:Nn \l__zmath_frac_den_tl {#4}
+              \bool_set_false:N \l__zmath_frac_den_paren_bool
+            }
+        }
+    }
+
+  \NewDocumentCommand \zfrac { s s o g o g }
+    {
+      \__zmath_frac_parse:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6}
+      \ensuremath{ \__zmath_frac_render:nn {#1} {#2} }
+    }
+
+\ExplSyntaxOff
+
+% ==============================================================================
 % \zcond * * * * [expr] {condition}
 % ------------------------------------------------------------------------------
 % "Evaluated at" vertical condition bar. Star count 0-4 selects bar size
@@ -505,6 +650,47 @@
                     }
                 }
             }
+        }
+    }
+
+\ExplSyntaxOff
+
+% ==============================================================================
+% \zdiff * t* [order] {var}
+% ------------------------------------------------------------------------------
+% Differential/derivative operator. No star: differential dx^n. One star:
+% derivative d^n/dx^n as \frac. Two stars (only meaningful with one star):
+% derivative, as \nicefrac. [order] is the exponent applied to both "d" and
+% VAR; omit it for a first differential/derivative. A small \mkern is added
+% on the side facing the operand (before "d" in differential form, after
+% the fraction in derivative form) to keep it visually separated from adjacent
+% symbols. This section has no package options.
+%
+%   \zdiff{x}   \zdiff[2]{x}   \zdiff*[2]{x}   \zdiff**[2]{x}
+% ==============================================================================
+
+\ExplSyntaxOn
+
+  \NewDocumentCommand \zdiff { s t* O{} m }
+    {
+      \ensuremath
+        {
+          \IfBooleanTF {#1}
+            {
+              \IfBooleanTF {#2}
+                {
+                  \nicefrac
+                    { \text{d} \tl_if_blank:nF {#3} { ^{#3} } }
+                    { \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
+                }
+                {
+                  \frac
+                    { \text{d} \tl_if_blank:nF {#3} { ^{#3} } }
+                    { \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
+                }
+              \mkern 2mu
+            }
+            { \mkern 10mu \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
         }
     }
 
@@ -743,179 +929,4 @@
 \ExplSyntaxOff
 
 % ==============================================================================
-% \zfrac * * [num] {num} [den] {den}
-% ------------------------------------------------------------------------------
-% Flexible fraction. {x} = plain, [x] = parenthesised. Single argument is
-% treated as denominator (numerator defaults to 1). Star: \nicefrac.
-% Double star: slash notation n/d. No star: \frac (\ensuremath-wrapped in
-% text mode).
-%
-%   \zfrac{n}{d}   \zfrac{n}[d]   \zfrac[n]{d}   \zfrac[n][d]   \zfrac[d]
-% ==============================================================================
-
-\ExplSyntaxOn
-
-  \bool_new:N \l__zfrac_math_bool
-  \bool_new:N \l__zfrac_num_paren_bool
-  \bool_new:N \l__zfrac_den_paren_bool
-  \bool_new:N \l__zfrac_den_present_bool
-  \tl_new:N   \l__zfrac_num_tl
-  \tl_new:N   \l__zfrac_den_tl
-
-  \cs_new:Npn \__zfrac_paren:n #1
-    { \bool_if:NTF \l__zfrac_math_bool { \left( #1 \right) } { (#1) } }
-
-  \cs_new:Npn \__zfrac_ctx:n #1
-    { \bool_if:NTF \l__zfrac_math_bool { #1 } { \mbox{#1} } }
-
-  \cs_new:Npn \__zfrac_arg:Nn #1 #2
-    {
-      \bool_if:NTF #1
-        { \__zfrac_paren:n { \__zfrac_ctx:n {#2} } }
-        { \__zfrac_ctx:n {#2} }
-    }
-
-  \cs_new:Npn \__zfrac_render:nn #1 #2
-    {
-      \bool_if:NF \l__zfrac_den_present_bool
-        { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
-        {
-          \IfBooleanTF {#1}
-            {
-              \IfBooleanTF {#2}
-                {
-                  \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl }
-                  /
-                  \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl }
-                }
-                {
-                  \nicefrac
-                    { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
-                    { \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl } }
-                }
-            }
-            {
-              \bool_if:NTF \l__zfrac_math_bool
-                {
-                  \frac
-                    { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
-                    { \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl } }
-                }
-                {
-                  \ensuremath
-                    {
-                      \frac
-                        { \__zfrac_arg:Nn \l__zfrac_num_paren_bool { \l__zfrac_num_tl } }
-                        { \__zfrac_arg:Nn \l__zfrac_den_paren_bool { \l__zfrac_den_tl } }
-                    }
-                }
-            }
-        }
-    }
-
-  \cs_new_protected:Npn \__zfrac_parse:nnnnnn #1 #2 #3 #4 #5 #6
-    {
-      \IfNoValueTF {#3}
-        {
-          \IfNoValueTF {#5}
-            {
-              \IfNoValueTF {#6}
-                {
-                  \tl_set:Nn \l__zfrac_num_tl { 1 }
-                  \bool_set_false:N \l__zfrac_num_paren_bool
-                  \bool_set_true:N  \l__zfrac_den_present_bool
-                  \tl_set:Nn \l__zfrac_den_tl {#4}
-                  \bool_set_false:N \l__zfrac_den_paren_bool
-                }
-                {
-                  \tl_set:Nn \l__zfrac_num_tl {#4}
-                  \bool_set_false:N \l__zfrac_num_paren_bool
-                  \bool_set_true:N  \l__zfrac_den_present_bool
-                  \tl_set:Nn \l__zfrac_den_tl {#6}
-                  \bool_set_false:N \l__zfrac_den_paren_bool
-                }
-            }
-            {
-              \tl_set:Nn \l__zfrac_num_tl {#4}
-              \bool_set_false:N \l__zfrac_num_paren_bool
-              \bool_set_true:N  \l__zfrac_den_present_bool
-              \tl_set:Nn \l__zfrac_den_tl {#5}
-              \bool_set_true:N  \l__zfrac_den_paren_bool
-            }
-        }
-        {
-          \IfNoValueTF {#4}
-            {
-              \IfNoValueTF {#5}
-                {
-                  \tl_set:Nn \l__zfrac_num_tl { 1 }
-                  \bool_set_false:N \l__zfrac_num_paren_bool
-                  \bool_set_true:N  \l__zfrac_den_present_bool
-                  \tl_set:Nn \l__zfrac_den_tl {#3}
-                  \bool_set_true:N  \l__zfrac_den_paren_bool
-                }
-                {
-                  \tl_set:Nn \l__zfrac_num_tl {#3}
-                  \bool_set_true:N  \l__zfrac_num_paren_bool
-                  \bool_set_true:N  \l__zfrac_den_present_bool
-                  \tl_set:Nn \l__zfrac_den_tl {#5}
-                  \bool_set_true:N  \l__zfrac_den_paren_bool
-                }
-            }
-            {
-              \tl_set:Nn \l__zfrac_num_tl {#3}
-              \bool_set_true:N  \l__zfrac_num_paren_bool
-              \bool_set_true:N  \l__zfrac_den_present_bool
-              \tl_set:Nn \l__zfrac_den_tl {#4}
-              \bool_set_false:N \l__zfrac_den_paren_bool
-            }
-        }
-    }
-
-  \NewDocumentCommand \zfrac { s s o g o g }
-    {
-      \bool_set:Nn \l__zfrac_math_bool { \mode_if_math_p: }
-      \__zfrac_parse:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6}
-      \__zfrac_render:nn {#1} {#2}
-    }
-
-\ExplSyntaxOff
-
-% ==============================================================================
-% \zdiff * t* [order] {var}
-% ------------------------------------------------------------------------------
-% Differential/derivative operator. No star: differential dx^n. One star:
-% derivative d^n/dx^n as \frac. Two stars: same, as \nicefrac.
-%
-%   \zdiff{x}   \zdiff[2]{x}   \zdiff*[2]{x}   \zdiff**[2]{x}
-% ==============================================================================
-
-\ExplSyntaxOn
-
-  \NewDocumentCommand \zdiff { s t* O{} m }
-    {
-      \ensuremath
-        {
-          \IfBooleanTF {#1}
-            {
-              \IfBooleanTF {#2}
-                {
-                  \nicefrac
-                    { \text{d} \tl_if_blank:nF {#3} { ^{#3} } }
-                    { \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
-                }
-                {
-                  \frac
-                    { \text{d} \tl_if_blank:nF {#3} { ^{#3} } }
-                    { \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
-                }
-              \mkern 2mu
-            }
-            { \mkern 10mu \text{d} #4 \tl_if_blank:nF {#3} { ^{#3} } }
-        }
-    }
-
-\ExplSyntaxOff
-% ==============================================================================
-
 \makeatother
