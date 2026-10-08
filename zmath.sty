@@ -2,24 +2,26 @@
 % zmath.sty — smart math typesetting utilities
 %
 % Provides:
+%   \zpunct   punctuation before equation number
+%   \zline    arbitrary underline stacking (\zvec, \zmat convenience wrappers)
+%   \zfrac    flexible fraction with configurable style and parenthesisation
 %   \zscale   uniform scaling of math content
-%   \zscript  pre- and post-scripts with optional scaling
 %   \zdot     math-mode dot product symbol with configurable size and placement
 %   \zarg     scaled parenthesised function argument
-%   \zline    arbitrary underline stacking (\zvec, \zmat convenience wrappers)
-%   \zpunct   punctuation before equation number
-%   \zprime   prime accent or superscript, context-sensitive scaling
-%   \zcond    "evaluated at" vertical bar with condition
-%   \zint     configurable integral with glyph type and limit placement
-%   \zfrac    flexible fraction with configurable style and parenthesisation
 %   \zdiff    differential and derivative operator
+%   \zcond    "evaluated at" vertical bar with condition
+%   \zscript  pre- and post-scripts with optional scaling
+%   \zprime   prime superscript or accent, context-sensitive scaling
+%   \zlim     limit operator with variable and value, below or as a subscript
+%   \zint     configurable integral with glyph type and limit placement
 %
 % Dependencies:
 %   amsmath, unicode-math, graphicx, nicefrac, xkeyval
 %   (expl3 and xparse are part of the LaTeX kernel since 2020)
 %
 % Structure:
-%   This file has one section per public command. Each section is
+%   This file has one section per public command, ordered from the commands
+%   that depend on nothing to those that build on the others. Each section is
 %   self-contained: package options, constants, helper functions and the
 %   public command are defined in that order, so a fix can be tested by
 %   replacing the whole section. A short "Global" section up front holds the
@@ -67,7 +69,7 @@
 % ------------------------------------------------------------------------------
 % Items shared by more than one command section: the package-wide per-style
 % `scale-*` options read by \zscale and the style-aware UNITS in which
-% \zscript, \zprime and \zint measure every position and frame margin.
+% \zscript, \zprime, \zlim and \zint measure every position and frame margin.
 % Everything else lives entirely inside its own command's section below.
 %
 % Units: every position/frame option of those commands is a dimensionless
@@ -79,9 +81,9 @@
 % The axis height of the style is also measured, for commands that must
 % re-centre scaled content (\zdot).
 %
-% Scales: every command that scales content (\zscale, \zdot, \zscript,
-% \zint) owns FOUR factors, one per math style (display, text, script,
-% scriptscript) of the context in which it is called, and ONE switch
+% Scales: every command that scales content (\zscale, \zdot, \zarg, \zscript,
+% \zprime, \zlim, \zint) owns FOUR factors, one per math style (display, text,
+% script, scriptscript) of the context in which it is called, and ONE switch
 % `<command>-scale-absolute` (true | false) that selects what they mean:
 %   true   ABSOLUTE (default): content is set in the NORMAL size
 %          (\displaystyle in display context, \textstyle otherwise) and then
@@ -97,11 +99,9 @@
 % REFERENCE style and k the wanted fraction of it, the absolute factor is
 % k*r and the relative one is k. The reference is the style of the call for
 % \zscale, \zdot, \zarg and \zprime, and one style below that of the nucleus
-% (never below scriptscript) for \zscript and \zint. Math fonts shrink script
-% and scriptscript style to about 0.7 and 0.5 of the normal size, so the
-% defaults of \zscale (k = 0.8: 0.8 / 0.8 / 0.56 / 0.42) and of \zscript and
-% \zint (k = 0.85 of the script style: 0.6 / 0.6 / 0.43 / 0.43) are absolute
-% factors derived that way.
+% (never below scriptscript) for \zscript, \zlim and \zint. Math fonts shrink
+% script and scriptscript style to about 0.7 and 0.5 of the normal size, so
+% the defaults of every command are absolute factors chosen that way.
 %
 % Nesting guard: TeX never sets anything below scriptscript style, but a
 % scaled box is invisible to its styles, so zmath tracks it itself.
@@ -116,7 +116,7 @@
   \newcommand{\zmath@scale@display}{1}
   \newcommand{\zmath@scale@text}{1}
   \newcommand{\zmath@scale@script}{0.7}
-  \newcommand{\zmath@scale@scriptscript}{0.55}
+  \newcommand{\zmath@scale@scriptscript}{0.6}
   \newcommand{\zmath@scale@absolute}{true}
   \define@key{zmath}{scale-display}{\renewcommand{\zmath@scale@display}{#1}}
   \define@key{zmath}{scale-text}{\renewcommand{\zmath@scale@text}{#1}}
@@ -150,6 +150,243 @@
 \ExplSyntaxOff
 
 % ==============================================================================
+% \zpunct {punct}
+% ------------------------------------------------------------------------------
+% Places punctuation at the right end of a display line, where its equation
+% number goes. In a numbered row it is attached immediately before the number,
+% separated from it by a space (a \tagform@ hook). In a row of a starred
+% environment (equation*, gather*, flalign*, ...) it is typeset flush right
+% through amsmath's own \tag*, exactly where a number would stand, so no number
+% is required. Must be placed in the row it ends, before its \\. A row left
+% unnumbered inside a numbered environment (\notag, \nonumber) discards the
+% punctuation, so it can never leak into a later number or \eqref.
+%
+%   \begin{equation}  E = mc^2 \zpunct{,} \end{equation}
+%   \begin{flalign*} &E = mc^2 \zpunct{,} \\ &F = ma \zpunct{.} \end{flalign*}
+% ==============================================================================
+
+  \newcommand{\zmath@currentpunct}{}
+  \def\tagform@#1{%
+    \maketag@@@{\zmath@currentpunct(\ignorespaces#1\unskip\@@italiccorr)}%
+    \gdef\zmath@currentpunct{}%
+  }
+  \let\zmath@make@display@tag\make@display@tag
+  \def\make@display@tag{%
+    \if@eqnsw\else\iftag@\else\gdef\zmath@currentpunct{}\fi\fi
+    \zmath@make@display@tag
+  }
+  \NewDocumentCommand \zpunct { m }
+    {
+      \ifst@rred
+        \tag*{#1}%
+      \else
+        \gdef\zmath@currentpunct{#1\space}%
+      \fi
+    }
+
+% ==============================================================================
+% \zline [count] {symbol}   |   \zvec {symbol}   |   \zmat {symbol}
+% ------------------------------------------------------------------------------
+% \zline underlines a symbol with <count> horizontal rules (default: 1),
+% each of thickness `zline-thickness`, separated from the symbol by
+% `zline-depth` and from each other by `zline-separation`. Rule width matches
+% the symbol's natural width exactly. Safe in text and math mode.
+%
+% \zvec and \zmat are convenience wrappers producing one and two underlines
+% respectively, for vector and matrix notation.
+%
+%   \zline[3]{W}       \zvec{u}       \zmat{A}
+% ==============================================================================
+
+  \newcommand{\zmath@line@depth}{2pt}
+  \newcommand{\zmath@line@thickness}{0.4pt}
+  \newcommand{\zmath@line@separation}{0.9pt}
+  \define@key{zmath}{zline-depth}{\renewcommand{\zmath@line@depth}{#1}}
+  \define@key{zmath}{zline-thickness}{\renewcommand{\zmath@line@thickness}{#1}}
+  \define@key{zmath}{zline-separation}{\renewcommand{\zmath@line@separation}{#1}}
+
+\ExplSyntaxOn
+
+  \box_new:N \l__zmath_line_box
+  \dim_new:N \l__zmath_line_depth_dim
+  \dim_new:N \l__zmath_line_thickness_dim
+  \dim_new:N \l__zmath_line_sep_dim
+
+  \NewDocumentCommand \zline { O{1} m }
+    {
+      \leavevmode
+      \dim_set:Nn \l__zmath_line_depth_dim     { \zmath@line@depth       }
+      \dim_set:Nn \l__zmath_line_thickness_dim { \zmath@line@thickness   }
+      \dim_set:Nn \l__zmath_line_sep_dim       { \zmath@line@separation  }
+      \hbox_set:Nn \l__zmath_line_box
+        { \ensuremath{ \mathsurround=0pt #2 } }
+      \vtop
+        {
+          \offinterlineskip
+          \box_use:N \l__zmath_line_box
+          \kern \l__zmath_line_depth_dim
+          \int_step_inline:nn {#1}
+            {
+              \hrule
+                height \l__zmath_line_thickness_dim
+                width  \box_wd:N \l__zmath_line_box
+              \int_compare:nNnF {##1} = {#1}
+                { \kern \l__zmath_line_sep_dim }
+            }
+        }
+    }
+
+  \NewDocumentCommand \zvec { m } { \ensuremath { \zline[1]{#1} } }
+  \NewDocumentCommand \zmat { m } { \ensuremath { \zline[2]{#1} } }
+
+\ExplSyntaxOff
+
+% ==============================================================================
+% \zfrac * * [num] {num} [den] {den}
+% ------------------------------------------------------------------------------
+% Flexible fraction. {x} = plain, [x] = parenthesised. Single argument is
+% treated as denominator (numerator defaults to 1). Star: \nicefrac.
+% Double star: slash notation n/d. No star: \frac. The whole output is
+% ALWAYS wrapped in \ensuremath, regardless of style, so operands may
+% contain math (\alpha, \sqrt{...}, etc.) even when \zfrac is called from
+% text mode — parenthesisation via \left(\right) then also stays valid,
+% since it always executes inside guaranteed math. Safe in text, inline,
+% and display mode.
+%
+% This section has no package options: unlike \zline or \zprime, \zfrac's
+% layout is fully determined by its stars and its argument delimiters, so
+% there is nothing left to tune.
+%
+%   \zfrac{n}{d}   \zfrac{n}[d]   \zfrac[n]{d}   \zfrac[n][d]   \zfrac[d]
+% ==============================================================================
+
+\ExplSyntaxOn
+
+  \tl_new:N   \l__zmath_frac_num_tl
+  \tl_new:N   \l__zmath_frac_den_tl
+
+  \bool_new:N \l__zmath_frac_num_paren_bool
+  \bool_new:N \l__zmath_frac_den_paren_bool
+  \bool_new:N \l__zmath_frac_den_present_bool
+  % NOTE: \l__zmath_frac_den_present_bool is unconditionally set true by
+  % \__zmath_frac_parse:nnnnnn below, so the "no denominator" branch in
+  % \__zmath_frac_render:nn is currently dead code. Potentially useful
+  % if a "numerator-only" call form proves needed in the future.
+
+  % wraps {math} in \left( \right); always called from within \ensuremath,
+  % so plain math-mode delimiters are safe regardless of the caller's mode
+  \cs_new:Npn \__zmath_frac_paren:n #1
+    { \left( #1 \right) }
+
+  % renders one operand — #1 the paren-bool controlling it, #2 its token
+  % list — parenthesising it via \__zmath_frac_paren:n when #1 is true
+  \cs_new:Npn \__zmath_frac_arg:Nn #1 #2
+    {
+      \bool_if:NTF #1
+        { \__zmath_frac_paren:n {#2} }
+        {#2}
+    }
+
+  % dispatches to the requested style once the numerator/denominator and
+  % their paren-bools have been set by \__zmath_frac_parse:nnnnnn —
+  % #1 star (nicefrac/slash)  #2 double-star (slash)
+  \cs_new:Npn \__zmath_frac_render:nn #1 #2
+    {
+      \bool_if:NF \l__zmath_frac_den_present_bool
+        { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+        {
+          \IfBooleanTF {#1}
+            {
+              \IfBooleanTF {#2}
+                {
+                  \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl }
+                  /
+                  \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl }
+                }
+                {
+                  \nicefrac
+                    { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+                    { \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl } }
+                }
+            }
+            {
+              \frac
+                { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+                { \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl } }
+            }
+        }
+    }
+
+  % parses the four o g o g arguments passed by \zfrac into the num/den
+  % token lists and their paren-bools, covering every {}/[] combination
+  \cs_new_protected:Npn \__zmath_frac_parse:nnnnnn #1 #2 #3 #4 #5 #6
+    {
+      \IfNoValueTF {#3}
+        {
+          \IfNoValueTF {#5}
+            {
+              \IfNoValueTF {#6}
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl { 1 }
+                  \bool_set_false:N \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#4}
+                  \bool_set_false:N \l__zmath_frac_den_paren_bool
+                }
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl {#4}
+                  \bool_set_false:N \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#6}
+                  \bool_set_false:N \l__zmath_frac_den_paren_bool
+                }
+            }
+            {
+              \tl_set:Nn \l__zmath_frac_num_tl {#4}
+              \bool_set_false:N \l__zmath_frac_num_paren_bool
+              \bool_set_true:N  \l__zmath_frac_den_present_bool
+              \tl_set:Nn \l__zmath_frac_den_tl {#5}
+              \bool_set_true:N  \l__zmath_frac_den_paren_bool
+            }
+        }
+        {
+          \IfNoValueTF {#4}
+            {
+              \IfNoValueTF {#5}
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl { 1 }
+                  \bool_set_false:N \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#3}
+                  \bool_set_true:N  \l__zmath_frac_den_paren_bool
+                }
+                {
+                  \tl_set:Nn \l__zmath_frac_num_tl {#3}
+                  \bool_set_true:N  \l__zmath_frac_num_paren_bool
+                  \bool_set_true:N  \l__zmath_frac_den_present_bool
+                  \tl_set:Nn \l__zmath_frac_den_tl {#5}
+                  \bool_set_true:N  \l__zmath_frac_den_paren_bool
+                }
+            }
+            {
+              \tl_set:Nn \l__zmath_frac_num_tl {#3}
+              \bool_set_true:N  \l__zmath_frac_num_paren_bool
+              \bool_set_true:N  \l__zmath_frac_den_present_bool
+              \tl_set:Nn \l__zmath_frac_den_tl {#4}
+              \bool_set_false:N \l__zmath_frac_den_paren_bool
+            }
+        }
+    }
+
+  \NewDocumentCommand \zfrac { s s o g o g }
+    {
+      \__zmath_frac_parse:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6}
+      \ensuremath{ \__zmath_frac_render:nn {#1} {#2} }
+    }
+
+\ExplSyntaxOff
+
+% ==============================================================================
 % \zscale [factor] {math}
 % ------------------------------------------------------------------------------
 % Scales math content uniformly by <factor>. Omitting <factor> uses the
@@ -158,17 +395,17 @@
 % in whichever style the call sits. What the factor multiplies depends on
 % the switch `scale-absolute` (see GLOBAL): true (default) -> the content set
 % in the normal size; false -> the content set in the ambient style. The
-% defaults are the absolute factors of k = 0.8 of the style of the call (see
-% "Choosing the factors" in GLOBAL). A nested call is guarded against
-% shrinking below the scriptscript size (see "Nesting guard" in GLOBAL), but
-% a factor given explicitly is never overridden. The output is one \mathord
-% box (wrapped outside the \mathchoice, so a script attached afterwards sees
-% a real atom). Safe in both math and text mode via an internal \ensuremath
-% boundary.
+% defaults are absolute factors derived as in "Choosing the factors" in
+% GLOBAL. A nested call is guarded against shrinking below the scriptscript
+% size (see "Nesting guard" in GLOBAL), but a factor given explicitly is
+% never overridden. The output is one \mathord box (wrapped outside the
+% \mathchoice, so a script attached afterwards sees a real atom). Safe in
+% both math and text mode via an internal \ensuremath boundary.
 %
-% The helpers below are shared by \zdot, \zscript and \zint, each of which
-% passes its own option prefix (dot@scale, script@scale, int@scale), so
-% every command reads its own four factors and its own switch.
+% The helpers below are shared by \zdot, \zarg, \zscript, \zprime, \zlim and
+% \zint, each of which passes its own option prefix (dot@scale, arg@scale,
+% script@scale, prime@scale, lim@scale, int@scale), so every command reads
+% its own four factors and its own switch.
 %
 %   \zscale{x^2}            % default factor of the context
 %   \zscale[0.8]{\nabla f}  % explicit factor
@@ -347,6 +584,179 @@
 \ExplSyntaxOff
 
 % ==============================================================================
+% \zarg {expr}
+% ------------------------------------------------------------------------------
+% Typesets a function-argument expression inside parentheses, scaled by
+% `zarg-scale-<style>` (one option per math style of the call, so the
+% parentheses stay proportionate inside exponents), with the meaning selected
+% by `zarg-scale-absolute` (see GLOBAL): true (default) -> a multiple of the
+% normal size; false -> a multiple of the ambient size. A small kern
+% (`zarg-kern`) is inserted before the opening parenthesis, inside the scaled
+% box, to fine-tune the gap after a function name. Nested in other zmath
+% scaled boxes the call is guarded like any scaled call (see "Nesting guard"
+% in GLOBAL). Adds no space of its own: any spacing around it comes from the
+% surrounding source and math atoms alone. The output is one \mathord box,
+% wrapped outside the \mathchoice like \zscale's. Safe in text, inline, and
+% display mode.
+%
+%   f\zarg{x}          f\zarg{x^2 + 1}
+% ==============================================================================
+
+  \newcommand{\zmath@arg@scale@display}{0.9}
+  \newcommand{\zmath@arg@scale@text}{0.9}
+  \newcommand{\zmath@arg@scale@script}{0.63}
+  \newcommand{\zmath@arg@scale@scriptscript}{0.5}
+  \newcommand{\zmath@arg@scale@absolute}{true}
+  \newcommand{\zmath@arg@kern}{0.5mu}
+  \define@key{zmath}{zarg-scale-display}{\renewcommand{\zmath@arg@scale@display}{#1}}
+  \define@key{zmath}{zarg-scale-text}{\renewcommand{\zmath@arg@scale@text}{#1}}
+  \define@key{zmath}{zarg-scale-script}{\renewcommand{\zmath@arg@scale@script}{#1}}
+  \define@key{zmath}{zarg-scale-scriptscript}{\renewcommand{\zmath@arg@scale@scriptscript}{#1}}
+  \define@key{zmath}{zarg-scale-absolute}{\renewcommand{\zmath@arg@scale@absolute}{#1}}
+  \define@key{zmath}{zarg-kern}{\renewcommand{\zmath@arg@kern}{#1}}
+
+\ExplSyntaxOn
+
+  % one \mathchoice branch — #1 expression  #2 style name
+  % (display|text|script|scriptscript)  #3 ambient style
+  \cs_new_protected:Npn \__zmath_arg:nnN #1#2#3
+    {
+      \__zmath_scale:nnnnN { }
+        { \mkern \zmath@arg@kern \left( #1 \right) } { arg@scale } {#2} #3
+    }
+
+  \NewDocumentCommand \zarg { m }
+    {
+      \ensuremath
+        {
+          \mathord
+            {
+              \mathchoice
+                { \__zmath_arg:nnN {#1} { display }      \displaystyle      }
+                { \__zmath_arg:nnN {#1} { text }         \textstyle         }
+                { \__zmath_arg:nnN {#1} { script }       \scriptstyle       }
+                { \__zmath_arg:nnN {#1} { scriptscript } \scriptscriptstyle }
+            }
+        }
+    }
+
+\ExplSyntaxOff
+
+% ==============================================================================
+% \zdiff + s t* [order] {var}
+% ------------------------------------------------------------------------------
+% Differential/derivative operator. No star: differential d^order var, set as
+% a \mathinner atom, so TeX itself supplies the usual thin space against
+% neighbouring Ord atoms in display/text style (none in script styles) and
+% the usual binary/relation spacing elsewhere. The bare command is thus safe
+% as an operand on its own (e.g. inside \frac), after \zarg, and after an
+% operator that brings its own spacing (\zdot): Bin followed by Inner gets
+% the same medium space as Bin followed by Ord, so nothing is doubled.
+% A leading + adds an extra kern on top of that spacing — `zdiff-math-
+% separation` when the call sits in display style, `zdiff-text-separation`
+% in text/script/scriptscript style, chosen automatically via \mathchoice,
+% mirroring \zint's math/text split. One star: derivative d^order/dvar^order
+% as \frac, followed by `zdiff-kern`. Two stars (only meaningful with one
+% star): derivative, as \nicefrac. [order] is the exponent of "d" (and, in
+% the derivative form, of VAR as well); omit it for a first differential/
+% derivative.
+%
+% Like \zint, these options are read at call time, so they may be set or
+% locally overridden with \setkeys{zmath}{...}.
+%
+%   \zdiff{x}   \zdiff+{x}   \zdiff[2]{x}   \zdiff+[2]{x}
+%   \zdiff*[2]{x}   \zdiff**[2]{x}
+% ==============================================================================
+
+  \newcommand{\zmath@diff@math@separation}{10mu}
+  \newcommand{\zmath@diff@text@separation}{5mu}
+  \newcommand{\zmath@diff@kern}{2mu}
+  \define@key{zmath}{zdiff-math-separation}{\renewcommand{\zmath@diff@math@separation}{#1}}
+  \define@key{zmath}{zdiff-text-separation}{\renewcommand{\zmath@diff@text@separation}{#1}}
+  \define@key{zmath}{zdiff-kern}{\renewcommand{\zmath@diff@kern}{#1}}
+
+\ExplSyntaxOn
+
+  \NewDocumentCommand \zdiff { t+ s t* O{} m }
+    {
+      \ensuremath
+        {
+          \IfBooleanTF {#2}
+            {
+              \IfBooleanTF {#3}
+                {
+                  \nicefrac
+                    { \text{d} \tl_if_blank:nF {#4} { ^{#4} } }
+                    { \text{d} #5 \tl_if_blank:nF {#4} { ^{#4} } }
+                }
+                {
+                  \frac
+                    { \text{d} \tl_if_blank:nF {#4} { ^{#4} } }
+                    { \text{d} #5 \tl_if_blank:nF {#4} { ^{#4} } }
+                }
+              \mkern \zmath@diff@kern
+            }
+            {
+              \mathinner
+                {
+                  \IfBooleanT {#1}
+                    {
+                      \mathchoice
+                        { \mkern \zmath@diff@math@separation }
+                        { \mkern \zmath@diff@text@separation }
+                        { \mkern \zmath@diff@text@separation }
+                        { \mkern \zmath@diff@text@separation }
+                    }
+                  \text{d} \tl_if_blank:nF {#4} { ^{#4} } #5
+                }
+            }
+        }
+    }
+
+\ExplSyntaxOff
+
+% ==============================================================================
+% \zcond * * * * [expr] {condition}
+% ------------------------------------------------------------------------------
+% "Evaluated at" vertical condition bar. Star count 0-4 selects bar size
+% (auto-scaled / \big| / \Big| / \bigg| / \Bigg|); [expr] is optional
+% content to the left of the bar, wrapped in \left. \right| when present.
+%
+%   \zcond{x=0}                    \zcond[f(x)]{x=0}
+%   \zcond*[\tfrac{df}{dx}]{x=0}
+% ==============================================================================
+
+\ExplSyntaxOn
+
+  \NewDocumentCommand \zcond { s s s s O{} m }
+    {
+      \ensuremath
+        {
+          \bool_if:nTF {#4}
+            { #5 \Bigg | \sb {#6} }
+            {
+              \bool_if:nTF {#3}
+                { #5 \bigg | \sb {#6} }
+                {
+                  \bool_if:nTF {#2}
+                    { #5 \Big | \sb {#6} }
+                    {
+                      \bool_if:nTF {#1}
+                        { #5 \big | \sb {#6} }
+                        {
+                          \tl_if_blank:nTF {#5}
+                            { | \sb { \zscale{#6} } }
+                            { \left. #5 \right | \sb { \zscale{#6} } }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+\ExplSyntaxOff
+
+% ==============================================================================
 % \zscript *[ll] *[ul] {nucleus} *[lr] *[ur]
 % ------------------------------------------------------------------------------
 % Attaches up to four scripts to a nucleus: leading (pre-indexed) subscript
@@ -360,11 +770,11 @@
 % scriptscript) is the style of the NUCLEUS; the same four factors apply to
 % all four scripts. The switch `zscript-scale-absolute` (see GLOBAL) selects
 % the meaning: true (default) -> normal size x factor; false -> unstarred
-% script size x factor. The defaults are the absolute factors of k = 0.85 of
-% the script style (see "Choosing the factors" in GLOBAL). A starred script
-% is guarded against shrinking below the scriptscript size when nested in
-% other zmath scaled boxes (see "Nesting guard" in GLOBAL); unstarred scripts
-% are floored by TeX itself.
+% script size x factor. The defaults are absolute factors derived as in
+% "Choosing the factors" in GLOBAL. A starred script is guarded against
+% shrinking below the scriptscript size when nested in other zmath scaled
+% boxes (see "Nesting guard" in GLOBAL); unstarred scripts are floored by TeX
+% itself.
 %
 % Every position is measured from the EDGES of the nucleus to the NEAREST
 % edge of the script, as a dimensionless RATIO of a unit measured in the
@@ -436,8 +846,8 @@
 
   \zmath@script@opt{scale-display}{scale@display}{0.6}
   \zmath@script@opt{scale-text}{scale@text}{0.6}
-  \zmath@script@opt{scale-script}{scale@script}{0.43}
-  \zmath@script@opt{scale-scriptscript}{scale@scriptscript}{0.43}
+  \zmath@script@opt{scale-script}{scale@script}{0.55}
+  \zmath@script@opt{scale-scriptscript}{scale@scriptscript}{0.5}
   \zmath@script@opt{scale-absolute}{scale@absolute}{true}
 
 \ExplSyntaxOn
@@ -612,132 +1022,17 @@
 \ExplSyntaxOff
 
 % ==============================================================================
-% \zarg {expr}
-% ------------------------------------------------------------------------------
-% Typesets a function-argument expression inside parentheses scaled by
-% `zarg-scale`, with a small kern (`zarg-kern`) inserted before the opening
-% parenthesis to fine-tune the gap after a function name. Adds no space of
-% its own: any spacing around it comes from the surrounding source and math
-% atoms alone. Safe in text, inline, and display mode.
-%
-%   f\zarg{x}          f\zarg{x^2 + 1}
-% ==============================================================================
-
-  \newcommand{\zmath@arg@scale}{0.9}
-  \newcommand{\zmath@arg@kern}{0.5mu}
-  \define@key{zmath}{zarg-scale}{\renewcommand{\zmath@arg@scale}{#1}}
-  \define@key{zmath}{zarg-kern}{\renewcommand{\zmath@arg@kern}{#1}}
-
-\ExplSyntaxOn
-
-  \NewDocumentCommand \zarg { m }
-    {
-      \scalebox{\zmath@arg@scale}
-        { \ensuremath { \mkern \zmath@arg@kern \left( #1 \right) } }
-    }
-
-\ExplSyntaxOff
-
-% ==============================================================================
-% \zline [count] {symbol}   |   \zvec {symbol}   |   \zmat {symbol}
-% ------------------------------------------------------------------------------
-% \zline underlines a symbol with <count> horizontal rules (default: 1),
-% each of thickness `zline-thickness`, separated from the symbol by
-% `zline-depth` and from each other by `zline-separation`. Rule width matches
-% the symbol's natural width exactly. Safe in text and math mode.
-%
-% \zvec and \zmat are convenience wrappers producing one and two underlines
-% respectively, for vector and matrix notation.
-%
-%   \zline[3]{W}       \zvec{u}       \zmat{A}
-% ==============================================================================
-
-  \newcommand{\zmath@line@depth}{2pt}
-  \newcommand{\zmath@line@thickness}{0.4pt}
-  \newcommand{\zmath@line@separation}{0.9pt}
-  \define@key{zmath}{zline-depth}{\renewcommand{\zmath@line@depth}{#1}}
-  \define@key{zmath}{zline-thickness}{\renewcommand{\zmath@line@thickness}{#1}}
-  \define@key{zmath}{zline-separation}{\renewcommand{\zmath@line@separation}{#1}}
-
-\ExplSyntaxOn
-
-  \box_new:N \l__zmath_line_box
-  \dim_new:N \l__zmath_line_depth_dim
-  \dim_new:N \l__zmath_line_thickness_dim
-  \dim_new:N \l__zmath_line_sep_dim
-
-  \NewDocumentCommand \zline { O{1} m }
-    {
-      \leavevmode
-      \dim_set:Nn \l__zmath_line_depth_dim     { \zmath@line@depth       }
-      \dim_set:Nn \l__zmath_line_thickness_dim { \zmath@line@thickness   }
-      \dim_set:Nn \l__zmath_line_sep_dim       { \zmath@line@separation  }
-      \hbox_set:Nn \l__zmath_line_box
-        { \ensuremath{ \mathsurround=0pt #2 } }
-      \vtop
-        {
-          \offinterlineskip
-          \box_use:N \l__zmath_line_box
-          \kern \l__zmath_line_depth_dim
-          \int_step_inline:nn {#1}
-            {
-              \hrule
-                height \l__zmath_line_thickness_dim
-                width  \box_wd:N \l__zmath_line_box
-              \int_compare:nNnF {##1} = {#1}
-                { \kern \l__zmath_line_sep_dim }
-            }
-        }
-    }
-
-  \NewDocumentCommand \zvec { m } { \ensuremath { \zline[1]{#1} } }
-  \NewDocumentCommand \zmat { m } { \ensuremath { \zline[2]{#1} } }
-
-\ExplSyntaxOff
-
-% ==============================================================================
-% \zpunct {punct}
-% ------------------------------------------------------------------------------
-% Places punctuation at the right end of a display line, where its equation
-% number goes. In a numbered row it is attached immediately before the number,
-% separated from it by a space (a \tagform@ hook). In a row of a starred
-% environment (equation*, gather*, flalign*, ...) it is typeset flush right
-% through amsmath's own \tag*, exactly where a number would stand, so no number
-% is required. Must be placed in the row it ends, before its \\. A row left
-% unnumbered inside a numbered environment (\notag, \nonumber) discards the
-% punctuation, so it can never leak into a later number or \eqref.
-%
-%   \begin{equation}  E = mc^2 \zpunct{,} \end{equation}
-%   \begin{flalign*} &E = mc^2 \zpunct{,} \\ &F = ma \zpunct{.} \end{flalign*}
-% ==============================================================================
-
-  \newcommand{\zmath@currentpunct}{}
-  \def\tagform@#1{%
-    \maketag@@@{\zmath@currentpunct(\ignorespaces#1\unskip\@@italiccorr)}%
-    \gdef\zmath@currentpunct{}%
-  }
-  \let\zmath@make@display@tag\make@display@tag
-  \def\make@display@tag{%
-    \if@eqnsw\else\iftag@\else\gdef\zmath@currentpunct{}\fi\fi
-    \zmath@make@display@tag
-  }
-  \NewDocumentCommand \zpunct { m }
-    {
-      \ifst@rred
-        \tag*{#1}%
-      \else
-        \gdef\zmath@currentpunct{#1\space}%
-      \fi
-    }
-
-% ==============================================================================
 % \zprime * [n] [v] [h] {symbol}
 % ------------------------------------------------------------------------------
-% Adorns SYMBOL with N prime marks (default 1). Unstarred draws them as a
-% centred accent above the symbol; starred draws them flush to its right
-% edge, like a superscript. Size auto-tracks math style: enlarged
-% (`zprime-scale-normal`) in display/text, shrunk (`zprime-scale-script`) in
-% script/scriptscript, so \zprime nests safely inside exponents etc.
+% Adorns SYMBOL with N prime marks (default 1). Unstarred draws them flush to
+% the symbol's right edge, like a superscript; starred draws them as a
+% centred accent above the symbol. The whole cluster (primes and the kerns
+% between them) is scaled once by `zprime-scale-<style>`, one option per math
+% style of the SYMBOL, so \zprime nests safely inside exponents etc. The
+% switch `zprime-scale-absolute` (see GLOBAL) selects the meaning: true
+% (default) -> a multiple of the normal-size primes; false -> a multiple of
+% the ambient ones. Nested in other zmath scaled boxes the cluster is guarded
+% like any scaled call (see "Nesting guard" in GLOBAL).
 %
 % The prime cluster is a box placed explicitly, free to overlap the symbol.
 % Every position is measured from the EDGES of the symbol to the NEAREST edge
@@ -749,17 +1044,18 @@
 %
 % Option names: zprime-<mode>-<form>-<axis>, with
 %   mode   math (display style) | text (text, script and scriptscript style)
-%   form   accent (unstarred) | script (starred)
+%   form   script (unstarred) | accent (starred)
 %   axis   v (vertical) | h (horizontal)
 % and zprime-<mode>-<before|after|above|below> for the frame. Every key
 % exists for both modes. `zprime-separation` (a mu-kern between consecutive
-% primes, a very fine unit: use a few mu) and the two scales are mode-free.
+% primes, scaled with them; a very fine unit: use a few mu), the scales
+% zprime-scale-<style> and the switch zprime-scale-absolute are mode-free.
 %
 % Coordinates: x positive to the right, y positive upward.
 %   v  = y of the cluster's BOTTOM edge, from the symbol's TOP edge
 %        (negative lowers the primes into the symbol).
-%   h  = accent: shift of the cluster from its centred position;
-%        script: x of the cluster's LEFT edge, from the symbol's RIGHT edge.
+%   h  = script: x of the cluster's LEFT edge, from the symbol's RIGHT edge;
+%        accent: shift of the cluster from its centred position.
 % V and H, when given, REPLACE (not nudge) the package option of the chosen
 % form and mode for this call only; leave empty ([]) to keep it. Both are
 % plain ratios, \eg [-0.5] or [0.1].
@@ -768,12 +1064,12 @@
 % symbol AND the cluster, plus `above`/`below`, and whose width covers the
 % same plus `before`/`after` (all signed and additive), exactly as in
 % \zscript. The box is wrapped in \mathord OUTSIDE the \mathchoice: a script
-% attached afterwards (e.g. \zprime[3]{\int}^{\infty}) or a \left/\right
+% attached afterwards (e.g. \zprime*[3]{\int}^{\infty}) or a \left/\right
 % would otherwise see an empty atom instead of the box's true height.
 %
 %   \zprime{f}          \zprime*{f}
 %   \zprime[2]{g}       \zprime*[2]{g}
-%   \zprime[1][][-0.1]{\int^{\infty}}   % h override, default v
+%   \zprime*[1][][-0.1]{\int^{\infty}}   % h override, default v
 % ==============================================================================
 
   % \zmath@prime@opt {key suffix} {macro suffix} {default} — declares the
@@ -783,29 +1079,32 @@
     \define@key{zmath}{zprime-#1}{\expandafter\renewcommand\csname zmath@prime@#2\endcsname{##1}}%
   }
 
-  \zmath@prime@opt{separation}{sep}{-2.5mu}
-  \zmath@prime@opt{scale-normal}{scale@normal}{1.1}
-  \zmath@prime@opt{scale-script}{scale@script}{0.65}
+  \zmath@prime@opt{separation}{sep}{-2mu}
+  \zmath@prime@opt{scale-display}{scale@display}{1.1}
+  \zmath@prime@opt{scale-text}{scale@text}{1.1}
+  \zmath@prime@opt{scale-script}{scale@script}{0.8}
+  \zmath@prime@opt{scale-scriptscript}{scale@scriptscript}{0.8}
+  \zmath@prime@opt{scale-absolute}{scale@absolute}{true}
 
   \zmath@prime@opt{math-before}{math@before}{0}
   \zmath@prime@opt{math-after}{math@after}{0}
   \zmath@prime@opt{math-above}{math@above}{0.1}
   \zmath@prime@opt{math-below}{math@below}{0.1}
 
-  \zmath@prime@opt{math-accent-v}{math@accent@v}{-0.8}
-  \zmath@prime@opt{math-accent-h}{math@accent@h}{0.1}
   \zmath@prime@opt{math-script-v}{math@script@v}{-1.3}
   \zmath@prime@opt{math-script-h}{math@script@h}{-0.02}
+  \zmath@prime@opt{math-accent-v}{math@accent@v}{-0.8}
+  \zmath@prime@opt{math-accent-h}{math@accent@h}{0.1}
 
   \zmath@prime@opt{text-before}{text@before}{0}
   \zmath@prime@opt{text-after}{text@after}{0}
   \zmath@prime@opt{text-above}{text@above}{0.1}
   \zmath@prime@opt{text-below}{text@below}{0.1}
 
-  \zmath@prime@opt{text-accent-v}{text@accent@v}{-0.8}
-  \zmath@prime@opt{text-accent-h}{text@accent@h}{0.1}
   \zmath@prime@opt{text-script-v}{text@script@v}{-1.3}
   \zmath@prime@opt{text-script-h}{text@script@h}{-0.02}
+  \zmath@prime@opt{text-accent-v}{text@accent@v}{-0.8}
+  \zmath@prime@opt{text-accent-h}{text@accent@h}{0.1}
 
 \ExplSyntaxOn
 
@@ -818,7 +1117,6 @@
 
   \tl_new:N \l__zmath_prime_mode_tl
   \tl_new:N \l__zmath_prime_form_tl
-  \tl_new:N \l__zmath_prime_scale_tl
   \tl_new:N \l__zmath_prime_n_tl
   \tl_new:N \l__zmath_prime_vratio_tl
   \tl_new:N \l__zmath_prime_hratio_tl
@@ -831,25 +1129,15 @@
   \cs_new:Npn \__zmath_prime_opt:n #1
     { \use:c { zmath@prime@ \l__zmath_prime_mode_tl @ #1 } }
 
-  % single prime glyph, scaled by decimal #1
-  \cs_new:Npn \__zmath_prime_one_glyph:n #1
-    { \scalebox {#1} { $\prime$ } }
-
-  % #1 primes, scaled by decimal #2, separated by zprime-separation
-  \cs_new:Npn \__zmath_prime_make:nn #1#2
+  % #1 primes, separated by zprime-separation. Unscaled: the whole cluster
+  % is scaled afterwards, kerns included.
+  \cs_new_protected:Npn \__zmath_prime_make:n #1
     {
-      \int_compare:nNnTF {#1} > {0}
-        { \__zmath_prime_make_loop:nnn {1} {#1} {#2} }
-        { }
-    }
-  % recursive worker for \__zmath_prime_make:nn — i, n, scale-decimal
-  \cs_new:Npn \__zmath_prime_make_loop:nnn #1#2#3
-    {
-      \__zmath_prime_one_glyph:n {#3}
-      \int_compare:nNnT {#1} < {#2}
+      \int_step_inline:nn {#1}
         {
-          \mkern \zmath@prime@sep \relax
-          \__zmath_prime_make_loop:nnn { \int_eval:n {#1+1} } {#2} {#3}
+          \prime
+          \int_compare:nNnF {##1} = {#1}
+            { \mkern \zmath@prime@sep }
         }
     }
 
@@ -893,24 +1181,27 @@
 
   % builds the whole output (one \mathchoice branch) —
   % #1 star-bool  #2 n (may be empty -> 1)  #3 v override (empty = option)
-  % #4 h override (empty = option)  #5 symbol  #6 scale decimal
-  % #7 "math"|"text"  #8 style of the symbol and the primes
+  % #4 h override (empty = option)  #5 symbol  #6 "math"|"text"
+  % #7 style name of the symbol (display|text|script|scriptscript)
+  % #8 style of the symbol and the primes
   % The output box is used bare: \zprime wraps it in \mathord OUTSIDE the
   % \mathchoice, so a script or \left/\right attached afterwards sees its
   % true height instead of an empty atom.
   \cs_new_protected:Npn \__zmath_prime_build:nnnnnnnN #1#2#3#4#5#6#7#8
     {
-      \tl_set:Nn \l__zmath_prime_mode_tl {#7}
+      \tl_set:Nn \l__zmath_prime_mode_tl {#6}
       \IfBooleanTF {#1}
-        { \tl_set:Nn \l__zmath_prime_form_tl { script } }
         { \tl_set:Nn \l__zmath_prime_form_tl { accent } }
+        { \tl_set:Nn \l__zmath_prime_form_tl { script } }
       \tl_set:Nn \l__zmath_prime_n_tl {#2}
       \tl_if_empty:NT \l__zmath_prime_n_tl { \tl_set:Nn \l__zmath_prime_n_tl {1} }
-      \tl_set:Nx \l__zmath_prime_scale_tl { \fp_to_decimal:n {#6} }
       \__zmath_unit:N #8
       \hbox_set:Nn \l__zmath_prime_nuc_box { $ \m@th #8 #5 $ }
       \hbox_set:Nn \l__zmath_prime_bare_box
-        { $ \m@th #8 \__zmath_prime_make:nn { \l__zmath_prime_n_tl } { \l__zmath_prime_scale_tl } $ }
+        {
+          \__zmath_scale:nnnnN { }
+            { \__zmath_prime_make:n { \l__zmath_prime_n_tl } } { prime@scale } {#7} #8
+        }
       \__zmath_prime_place:nn {#3} {#4}
       \hbox_set:Nn \l__zmath_prime_out_box
         {
@@ -945,10 +1236,10 @@
           \mathord
             {
               \mathchoice
-                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { \zmath@prime@scale@normal } { math } \displaystyle }
-                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { \zmath@prime@scale@normal } { text } \textstyle }
-                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { \zmath@prime@scale@script } { text } \scriptstyle }
-                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { \zmath@prime@scale@script } { text } \scriptscriptstyle }
+                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { math } { display }      \displaystyle      }
+                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { text } { text }         \textstyle         }
+                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { text } { script }       \scriptstyle       }
+                { \__zmath_prime_build:nnnnnnnN {#1}{#2}{#3}{#4}{#5} { text } { scriptscript } \scriptscriptstyle }
             }
         }
     }
@@ -956,259 +1247,229 @@
 \ExplSyntaxOff
 
 % ==============================================================================
-% \zfrac * * [num] {num} [den] {den}
+% \zlim + * {var} * {limit}
 % ------------------------------------------------------------------------------
-% Flexible fraction. {x} = plain, [x] = parenthesised. Single argument is
-% treated as denominator (numerator defaults to 1). Star: \nicefrac.
-% Double star: slash notation n/d. No star: \frac. The whole output is
-% ALWAYS wrapped in \ensuremath, regardless of style, so operands may
-% contain math (\alpha, \sqrt{...}, etc.) even when \zfrac is called from
-% text mode — parenthesisation via \left(\right) then also stays valid,
-% since it always executes inside guaranteed math. Safe in text, inline,
-% and display mode.
+% Limit operator: "lim" with the script `var \to limit`. Without the plus the
+% script is centred BELOW the operator in every style, as \lim\limits_{...}
+% would in display; with a leading + it hangs to the LOWER RIGHT of the
+% operator, as a subscript (\lim\nolimits_{...}). One-sided limits are
+% written in {limit} itself, e.g. {0^+}. Safe in text, inline, and display
+% mode.
 %
-% This section has no package options: unlike \zline or \zprime, \zfrac's
-% layout is fully determined by its stars and its argument delimiters, so
-% there is nothing left to tune.
+% The script is a box set one style below that of the operator and placed
+% explicitly, never by TeX's limits machinery, so every style shares one
+% geometry and the script is free to overlap the operator. A star before
+% {var} or {limit} additionally scales that part, as a box inside the
+% script, by `zlim-scale-<style>`, where <style> (display, text, script,
+% scriptscript) is the style of the OPERATOR; the same four factors apply to
+% both parts. The switch `zlim-scale-absolute` (see GLOBAL) selects the
+% meaning: true (default) -> normal size x factor; false -> unstarred script
+% size x factor. The defaults are absolute factors derived as in "Choosing
+% the factors" in GLOBAL. A starred part is guarded against shrinking below
+% the scriptscript size when nested in other zmath scaled boxes (see
+% "Nesting guard" in GLOBAL); unstarred parts are floored by TeX itself.
 %
-%   \zfrac{n}{d}   \zfrac{n}[d]   \zfrac[n]{d}   \zfrac[n][d]   \zfrac[d]
+% Every position is measured from the EDGES of the operator to the NEAREST
+% edge of the script, as a dimensionless RATIO of a unit measured in the
+% style of the operator (see GLOBAL): vertical options (v, above, below) are
+% ratios of its x-height, horizontal ones (h, before, after) of its quad.
+%
+% Option names: zlim-<mode>-<form>-<axis>, with
+%   mode   math (display style) | text (text, script and scriptscript style)
+%   form   below (unstarred by +) | script (with +)
+%   axis   v (vertical) | h (horizontal)
+% and zlim-<mode>-<before|after|above|below> for the frame. Every key
+% exists for both modes. The scales zlim-scale-<style> and the switch
+% zlim-scale-absolute are mode-free.
+%
+% Coordinates: x positive to the right, y positive upward.
+%   v  = y of the script's TOP edge, from the operator's BOTTOM edge
+%        (negative lowers the script below the operator).
+%   h  = below: shift of the script from its centred position;
+%        script: x of the script's LEFT edge, from the operator's RIGHT edge.
+%
+% The whole output is one \mathop box (followed by \nolimits, so TeX keeps
+% the usual space after an operator) whose height and depth cover the
+% operator and the script, plus `above`/`below`, and whose width covers the
+% same plus `before`/`after` (all signed and additive, as in \zscript), so
+% neighbouring lines are pushed apart. A negative `after` removes part of
+% the space left after the operator, pulling the following term (e.g. a
+% derivative) closer. The box is wrapped in \mathop OUTSIDE the \mathchoice,
+% so a script or \left/\right attached afterwards sees its true height.
+%
+%   \zlim{x}{0}              \zlim+{x}{0}
+%   \zlim*{x}*{0^+}          \zlim+*{n}{\infty}
 % ==============================================================================
+
+  % \zmath@lim@opt {key suffix} {macro suffix} {default} — declares the
+  % option macro \zmath@lim@<macro suffix> and its key zlim-<key suffix>
+  \newcommand{\zmath@lim@opt}[3]{%
+    \expandafter\newcommand\csname zmath@lim@#2\endcsname{#3}%
+    \define@key{zmath}{zlim-#1}{\expandafter\renewcommand\csname zmath@lim@#2\endcsname{##1}}%
+  }
+
+  \zmath@lim@opt{scale-display}{scale@display}{0.6}
+  \zmath@lim@opt{scale-text}{scale@text}{0.6}
+  \zmath@lim@opt{scale-script}{scale@script}{0.43}
+  \zmath@lim@opt{scale-scriptscript}{scale@scriptscript}{0.43}
+  \zmath@lim@opt{scale-absolute}{scale@absolute}{true}
+
+  \zmath@lim@opt{math-before}{math@before}{0}
+  \zmath@lim@opt{math-after}{math@after}{0}
+  \zmath@lim@opt{math-above}{math@above}{0}
+  \zmath@lim@opt{math-below}{math@below}{0}
+
+  \zmath@lim@opt{math-below-v}{math@below@v}{-0.4}
+  \zmath@lim@opt{math-below-h}{math@below@h}{0}
+  \zmath@lim@opt{math-script-v}{math@script@v}{0.3}
+  \zmath@lim@opt{math-script-h}{math@script@h}{-0.05}
+
+  \zmath@lim@opt{text-before}{text@before}{0}
+  \zmath@lim@opt{text-after}{text@after}{0}
+  \zmath@lim@opt{text-above}{text@above}{0.5}
+  \zmath@lim@opt{text-below}{text@below}{0.5}
+
+  \zmath@lim@opt{text-below-v}{text@below@v}{-0.4}
+  \zmath@lim@opt{text-below-h}{text@below@h}{0}
+  \zmath@lim@opt{text-script-v}{text@script@v}{0.3}
+  \zmath@lim@opt{text-script-h}{text@script@h}{-0.05}
 
 \ExplSyntaxOn
 
-  \tl_new:N   \l__zmath_frac_num_tl
-  \tl_new:N   \l__zmath_frac_den_tl
+  \tl_new:N  \l__zmath_lim_mode_tl
+  \tl_new:N  \l__zmath_lim_ctx_tl
+  \tl_new:N  \l__zmath_lim_form_tl
 
-  \bool_new:N \l__zmath_frac_num_paren_bool
-  \bool_new:N \l__zmath_frac_den_paren_bool
-  \bool_new:N \l__zmath_frac_den_present_bool
-  % NOTE: \l__zmath_frac_den_present_bool is unconditionally set true by
-  % \__zmath_frac_parse:nnnnnn below, so the "no denominator" branch in
-  % \__zmath_frac_render:nn is currently dead code. Potentially useful
-  % if a "numerator-only" call form proves needed in the future.
+  \dim_new:N \l__zmath_lim_v_dim
+  \dim_new:N \l__zmath_lim_h_dim
+  \dim_new:N \l__zmath_lim_x_dim
+  \dim_new:N \l__zmath_lim_y_dim
+  \dim_new:N \l__zmath_lim_left_dim
+  \dim_new:N \l__zmath_lim_right_dim
 
-  % wraps {math} in \left( \right); always called from within \ensuremath,
-  % so plain math-mode delimiters are safe regardless of the caller's mode
-  \cs_new:Npn \__zmath_frac_paren:n #1
-    { \left( #1 \right) }
+  \box_new:N \l__zmath_lim_nuc_box
+  \box_new:N \l__zmath_lim_script_box
+  \box_new:N \l__zmath_lim_out_box
 
-  % renders one operand — #1 the paren-bool controlling it, #2 its token
-  % list — parenthesising it via \__zmath_frac_paren:n when #1 is true
-  \cs_new:Npn \__zmath_frac_arg:Nn #1 #2
+  % expands to the option macro of the current mode — #1 is "below@v", "after", ...
+  \cs_new:Npn \__zmath_lim_opt:n #1
+    { \use:c { zmath@lim@ \l__zmath_lim_mode_tl @ #1 } }
+
+  % one part of the script — #1 star  #2 content  #3 style of the script.
+  % Starred: a box scaled by zlim-scale-<style of the operator> (see the
+  % header for what the factor multiplies); unstarred: the content itself,
+  % so TeX spaces it against the arrow exactly as in a plain limit.
+  \cs_new_protected:Npn \__zmath_lim_part:nnN #1#2#3
     {
-      \bool_if:NTF #1
-        { \__zmath_frac_paren:n {#2} }
+      \bool_if:nTF {#1}
+        { \__zmath_scale:nnnnN { } {#2} { lim@scale } { \l__zmath_lim_ctx_tl } #3 }
         {#2}
     }
 
-  % dispatches to the requested style once the numerator/denominator and
-  % their paren-bools have been set by \__zmath_frac_parse:nnnnnn —
-  % #1 star (nicefrac/slash)  #2 double-star (slash)
-  \cs_new:Npn \__zmath_frac_render:nn #1 #2
+  % computes the script's position for the current form — its baseline raise
+  % (dim y) and the x of its left edge from the operator's left edge (dim x)
+  % — then the left/right overhangs that contain it
+  \cs_new_protected:Npn \__zmath_lim_place:
     {
-      \bool_if:NF \l__zmath_frac_den_present_bool
-        { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
+      \dim_set:Nn \l__zmath_lim_v_dim
         {
-          \IfBooleanTF {#1}
+          \__zmath_ratio:nN { \__zmath_lim_opt:n { \l__zmath_lim_form_tl @v } }
+            \l__zmath_unit_v_dim
+        }
+      \dim_set:Nn \l__zmath_lim_h_dim
+        {
+          \__zmath_ratio:nN { \__zmath_lim_opt:n { \l__zmath_lim_form_tl @h } }
+            \l__zmath_unit_h_dim
+        }
+      \dim_set:Nn \l__zmath_lim_y_dim
+        {
+          - \box_dp:N \l__zmath_lim_nuc_box + \l__zmath_lim_v_dim
+          - \box_ht:N \l__zmath_lim_script_box
+        }
+      \dim_set:Nn \l__zmath_lim_x_dim
+        {
+          \l__zmath_lim_h_dim
+          + \str_if_eq:VnTF \l__zmath_lim_form_tl { below }
+              { ( \box_wd:N \l__zmath_lim_nuc_box - \box_wd:N \l__zmath_lim_script_box ) / 2 }
+              { \box_wd:N \l__zmath_lim_nuc_box }
+        }
+      \dim_set:Nn \l__zmath_lim_left_dim
+        { \dim_max:nn { 0pt } { - \l__zmath_lim_x_dim } }
+      \dim_set:Nn \l__zmath_lim_right_dim
+        {
+          \dim_max:nn { 0pt }
             {
-              \IfBooleanTF {#2}
-                {
-                  \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl }
-                  /
-                  \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl }
-                }
-                {
-                  \nicefrac
-                    { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
-                    { \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl } }
-                }
-            }
-            {
-              \frac
-                { \__zmath_frac_arg:Nn \l__zmath_frac_num_paren_bool { \l__zmath_frac_num_tl } }
-                { \__zmath_frac_arg:Nn \l__zmath_frac_den_paren_bool { \l__zmath_frac_den_tl } }
+              \l__zmath_lim_x_dim + \box_wd:N \l__zmath_lim_script_box
+              - \box_wd:N \l__zmath_lim_nuc_box
             }
         }
     }
 
-  % parses the four o g o g arguments passed by \zfrac into the num/den
-  % token lists and their paren-bools, covering every {}/[] combination
-  \cs_new_protected:Npn \__zmath_frac_parse:nnnnnn #1 #2 #3 #4 #5 #6
+  % builds the whole output (one \mathchoice branch), reading the form
+  % already selected into \l__zmath_lim_form_tl by \zlim itself —
+  % #1 var star  #2 var  #3 limit star  #4 limit  #5 "math"|"text"
+  % #6 style name of the operator (display|text|script|scriptscript)
+  % #7 style of the operator  #8 style of the script
+  % The output box is used bare: \zlim wraps it in \mathop OUTSIDE the
+  % \mathchoice, so a script or \left/\right attached afterwards sees its
+  % true height instead of an empty atom.
+  \cs_new_protected:Npn \__zmath_lim_build:nnnnnnNN #1#2#3#4#5#6#7#8
     {
-      \IfNoValueTF {#3}
+      \tl_set:Nn \l__zmath_lim_mode_tl {#5}
+      \tl_set:Nn \l__zmath_lim_ctx_tl {#6}
+      \__zmath_unit:N #7
+      \hbox_set:Nn \l__zmath_lim_nuc_box { $ \m@th #7 \operatorname { lim } $ }
+      \hbox_set:Nn \l__zmath_lim_script_box
         {
-          \IfNoValueTF {#5}
-            {
-              \IfNoValueTF {#6}
-                {
-                  \tl_set:Nn \l__zmath_frac_num_tl { 1 }
-                  \bool_set_false:N \l__zmath_frac_num_paren_bool
-                  \bool_set_true:N  \l__zmath_frac_den_present_bool
-                  \tl_set:Nn \l__zmath_frac_den_tl {#4}
-                  \bool_set_false:N \l__zmath_frac_den_paren_bool
-                }
-                {
-                  \tl_set:Nn \l__zmath_frac_num_tl {#4}
-                  \bool_set_false:N \l__zmath_frac_num_paren_bool
-                  \bool_set_true:N  \l__zmath_frac_den_present_bool
-                  \tl_set:Nn \l__zmath_frac_den_tl {#6}
-                  \bool_set_false:N \l__zmath_frac_den_paren_bool
-                }
-            }
-            {
-              \tl_set:Nn \l__zmath_frac_num_tl {#4}
-              \bool_set_false:N \l__zmath_frac_num_paren_bool
-              \bool_set_true:N  \l__zmath_frac_den_present_bool
-              \tl_set:Nn \l__zmath_frac_den_tl {#5}
-              \bool_set_true:N  \l__zmath_frac_den_paren_bool
-            }
+          $ \m@th #8
+            \__zmath_lim_part:nnN {#1} {#2} #8
+            \to
+            \__zmath_lim_part:nnN {#3} {#4} #8
+          $
         }
+      \__zmath_lim_place:
+      \hbox_set:Nn \l__zmath_lim_out_box
         {
-          \IfNoValueTF {#4}
+          \kern \__zmath_ratio:nN { \__zmath_lim_opt:n { before } } \l__zmath_unit_h_dim
+          \kern \l__zmath_lim_left_dim
+          \rlap
             {
-              \IfNoValueTF {#5}
-                {
-                  \tl_set:Nn \l__zmath_frac_num_tl { 1 }
-                  \bool_set_false:N \l__zmath_frac_num_paren_bool
-                  \bool_set_true:N  \l__zmath_frac_den_present_bool
-                  \tl_set:Nn \l__zmath_frac_den_tl {#3}
-                  \bool_set_true:N  \l__zmath_frac_den_paren_bool
-                }
-                {
-                  \tl_set:Nn \l__zmath_frac_num_tl {#3}
-                  \bool_set_true:N  \l__zmath_frac_num_paren_bool
-                  \bool_set_true:N  \l__zmath_frac_den_present_bool
-                  \tl_set:Nn \l__zmath_frac_den_tl {#5}
-                  \bool_set_true:N  \l__zmath_frac_den_paren_bool
-                }
+              \kern \l__zmath_lim_x_dim
+              \box_move_up:nn { \l__zmath_lim_y_dim } { \box_use:N \l__zmath_lim_script_box }
             }
-            {
-              \tl_set:Nn \l__zmath_frac_num_tl {#3}
-              \bool_set_true:N  \l__zmath_frac_num_paren_bool
-              \bool_set_true:N  \l__zmath_frac_den_present_bool
-              \tl_set:Nn \l__zmath_frac_den_tl {#4}
-              \bool_set_false:N \l__zmath_frac_den_paren_bool
-            }
+          \box_use:N \l__zmath_lim_nuc_box
+          \kern \l__zmath_lim_right_dim
+          \kern \__zmath_ratio:nN { \__zmath_lim_opt:n { after } } \l__zmath_unit_h_dim
         }
+      \box_set_ht:Nn \l__zmath_lim_out_box
+        {
+          \box_ht:N \l__zmath_lim_out_box
+          + \__zmath_ratio:nN { \__zmath_lim_opt:n { above } } \l__zmath_unit_v_dim
+        }
+      \box_set_dp:Nn \l__zmath_lim_out_box
+        {
+          \box_dp:N \l__zmath_lim_out_box
+          + \__zmath_ratio:nN { \__zmath_lim_opt:n { below } } \l__zmath_unit_v_dim
+        }
+      \box_use:N \l__zmath_lim_out_box
     }
 
-  \NewDocumentCommand \zfrac { s s o g o g }
+  \NewDocumentCommand \zlim { t+ s m s m }
     {
-      \__zmath_frac_parse:nnnnnn {#1}{#2}{#3}{#4}{#5}{#6}
-      \ensuremath{ \__zmath_frac_render:nn {#1} {#2} }
-    }
-
-\ExplSyntaxOff
-
-% ==============================================================================
-% \zdiff + s t* [order] {var}
-% ------------------------------------------------------------------------------
-% Differential/derivative operator. No star: differential d^order var, set as
-% a \mathinner atom, so TeX itself supplies the usual thin space against
-% neighbouring Ord atoms in display/text style (none in script styles) and
-% the usual binary/relation spacing elsewhere. The bare command is thus safe
-% as an operand on its own (e.g. inside \frac), after \zarg, and after an
-% operator that brings its own spacing (\zdot): Bin followed by Inner gets
-% the same medium space as Bin followed by Ord, so nothing is doubled.
-% A leading + adds an extra kern on top of that spacing — `zdiff-math-
-% separation` when the call sits in display style, `zdiff-text-separation`
-% in text/script/scriptscript style, chosen automatically via \mathchoice,
-% mirroring \zint's math/text split. One star: derivative d^order/dvar^order
-% as \frac, followed by `zdiff-kern`. Two stars (only meaningful with one
-% star): derivative, as \nicefrac. [order] is the exponent of "d" (and, in
-% the derivative form, of VAR as well); omit it for a first differential/
-% derivative.
-%
-% Like \zint, these options are read at call time, so they may be set or
-% locally overridden with \setkeys{zmath}{...}.
-%
-%   \zdiff{x}   \zdiff+{x}   \zdiff[2]{x}   \zdiff+[2]{x}
-%   \zdiff*[2]{x}   \zdiff**[2]{x}
-% ==============================================================================
-
-  \newcommand{\zmath@diff@math@separation}{10mu}
-  \newcommand{\zmath@diff@text@separation}{5mu}
-  \newcommand{\zmath@diff@kern}{2mu}
-  \define@key{zmath}{zdiff-math-separation}{\renewcommand{\zmath@diff@math@separation}{#1}}
-  \define@key{zmath}{zdiff-text-separation}{\renewcommand{\zmath@diff@text@separation}{#1}}
-  \define@key{zmath}{zdiff-kern}{\renewcommand{\zmath@diff@kern}{#1}}
-
-\ExplSyntaxOn
-
-  \NewDocumentCommand \zdiff { t+ s t* O{} m }
-    {
+      \IfBooleanTF {#1}
+        { \tl_set:Nn \l__zmath_lim_form_tl { script } }
+        { \tl_set:Nn \l__zmath_lim_form_tl { below } }
       \ensuremath
         {
-          \IfBooleanTF {#2}
+          \mathop
             {
-              \IfBooleanTF {#3}
-                {
-                  \nicefrac
-                    { \text{d} \tl_if_blank:nF {#4} { ^{#4} } }
-                    { \text{d} #5 \tl_if_blank:nF {#4} { ^{#4} } }
-                }
-                {
-                  \frac
-                    { \text{d} \tl_if_blank:nF {#4} { ^{#4} } }
-                    { \text{d} #5 \tl_if_blank:nF {#4} { ^{#4} } }
-                }
-              \mkern \zmath@diff@kern
+              \mathchoice
+                { \__zmath_lim_build:nnnnnnNN {#2}{#3}{#4}{#5} { math } { display }      \displaystyle      \scriptstyle       }
+                { \__zmath_lim_build:nnnnnnNN {#2}{#3}{#4}{#5} { text } { text }         \textstyle         \scriptstyle       }
+                { \__zmath_lim_build:nnnnnnNN {#2}{#3}{#4}{#5} { text } { script }       \scriptstyle       \scriptscriptstyle }
+                { \__zmath_lim_build:nnnnnnNN {#2}{#3}{#4}{#5} { text } { scriptscript } \scriptscriptstyle \scriptscriptstyle }
             }
-            {
-              \mathinner
-                {
-                  \IfBooleanT {#1}
-                    {
-                      \mathchoice
-                        { \mkern \zmath@diff@math@separation }
-                        { \mkern \zmath@diff@text@separation }
-                        { \mkern \zmath@diff@text@separation }
-                        { \mkern \zmath@diff@text@separation }
-                    }
-                  \text{d} \tl_if_blank:nF {#4} { ^{#4} } #5
-                }
-            }
-        }
-    }
-
-\ExplSyntaxOff
-
-% ==============================================================================
-% \zcond * * * * [expr] {condition}
-% ------------------------------------------------------------------------------
-% "Evaluated at" vertical condition bar. Star count 0-4 selects bar size
-% (auto-scaled / \big| / \Big| / \bigg| / \Bigg|); [expr] is optional
-% content to the left of the bar, wrapped in \left. \right| when present.
-%
-%   \zcond{x=0}                    \zcond[f(x)]{x=0}
-%   \zcond*[\tfrac{df}{dx}]{x=0}
-% ==============================================================================
-
-\ExplSyntaxOn
-
-  \NewDocumentCommand \zcond { s s s s O{} m }
-    {
-      \ensuremath
-        {
-          \bool_if:nTF {#4}
-            { #5 \Bigg | \sb {#6} }
-            {
-              \bool_if:nTF {#3}
-                { #5 \bigg | \sb {#6} }
-                {
-                  \bool_if:nTF {#2}
-                    { #5 \Big | \sb {#6} }
-                    {
-                      \bool_if:nTF {#1}
-                        { #5 \big | \sb {#6} }
-                        {
-                          \tl_if_blank:nTF {#5}
-                            { | \sb { \zscale{#6} } }
-                            { \left. #5 \right | \sb { \zscale{#6} } }
-                        }
-                    }
-                }
-            }
+          \nolimits
         }
     }
 
@@ -1228,11 +1489,11 @@
 % (display, text, script, scriptscript) is the style of the GLYPH; the same
 % four factors apply to both limits. The switch `zint-scale-absolute` (see
 % GLOBAL) selects the meaning: true (default) -> normal size x factor; false
-% -> unstarred limit size x factor. The defaults are the absolute factors of
-% k = 0.85 of the script style (see "Choosing the factors" in GLOBAL). A
-% starred limit is guarded against shrinking below the scriptscript size when
-% nested in other zmath scaled boxes (see "Nesting guard" in GLOBAL);
-% unstarred limits are floored by TeX itself.
+% -> unstarred limit size x factor. The defaults are absolute factors derived
+% as in "Choosing the factors" in GLOBAL. A starred limit is guarded against
+% shrinking below the scriptscript size when nested in other zmath scaled
+% boxes (see "Nesting guard" in GLOBAL); unstarred limits are floored by TeX
+% itself.
 %
 % Both limits are always boxes placed explicitly, never by TeX's script
 % machinery, so every combination of mode and class shares one geometry, and

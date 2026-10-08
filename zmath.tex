@@ -162,7 +162,7 @@
 
 Classical \LaTeX\ math commands such as \cs{int}, \cs{frac}, and \cs{underbrace} are powerful but low-level. Writing readable source for an equation requires manual spacing kerns, sizing primitives, and mode switches that clutter the source and make it hard to refactor.
 
-For this, \pkg{zmath} introduces semantic shorthands that hide this complexity:
+For this, I have merged and expanded several macros that I have been using intermitently since 2020 into the \pkg{zmath} package, that introduces semantic shorthands to hide much of this complexity, \eg:
 \begin{tcblisting}{
     zmathex,
     %halign lower=center,
@@ -175,7 +175,7 @@ For this, \pkg{zmath} introduces semantic shorthands that hide this complexity:
     \zpunct{.}
   \end{equation}
 \end{tcblisting}
-Every command handles both display and inline modes, respects the ambient math style, and exposes its tunable parameters as package options so the same source adapts to different fonts and house styles without changes to individual call sites.
+In their package version, commands handle both display and inline modes, respects the ambient math style, and exposes their tunable parameters as package options so the same source adapts to different fonts and house styles without changes to individual call sites.
 
 The package is built on \pkg{expl3} and \pkg{xparse}, which are part of the \LaTeX\ kernel since 2020 and require no extra \cs{usepackage} declarations. The integral commands use XITS~Math glyphs for the integral symbols (loaded automatically at \cs{begin}\texttt{\{document\}}); the remainder of the math font is left to the user. I personally like:
 \begin{syntax}
@@ -191,7 +191,7 @@ The package is built on \pkg{expl3} and \pkg{xparse}, which are part of the \LaT
 \end{syntax}
 
 \noindent
-Required packages loaded automatically: \pkg{amsmath}, \pkg{unicode-math}, \pkg{graphicx}, \pkg{nicefrac}, \pkg{xkeyval}. Because \pkg{unicode-math} is loaded, the document engine must be \LuaLaTeX\ or \XeLaTeX.
+Required packages loaded automatically: \pkg{amsmath}, \pkg{unicode-math}, \pkg{graphicx}, \pkg{nicefrac}, \pkg{xkeyval}. Because \pkg{unicode-math} is loaded, \textbf{the document engine must be} \LuaLaTeX\ or \XeLaTeX.
 
 % ------------------------------------------------------------------------------
 \subsection{About this documentation}
@@ -211,6 +211,214 @@ All tunable constants are exposed as key--value options via a unified interface.
 
 % ------------------------------------------------------------------------------
 \clearpage
+\subsection{\cs{zpunct} — punctuation at the end of a display line}
+% ------------------------------------------------------------------------------
+
+\macroDescription{\zpunct}
+The \cs{zpunct} command provides a semantic hook to end a line of a mathematical display with a punctuation mark \macroMeta{punct}. Rather than dropping the token right at the end of the math expression—which can cause awkward line breaks or misaligned punctuation tracking—this utility moves it to the right end of the line, where the equation number goes. It works with and without equation numbers. It has no package options.
+
+\begin{syntax}
+  \cs{zpunct}\macroArg{punct}
+\end{syntax}
+
+In a numbered equation, the punctuation rests immediately before the number, separated from it by a space. In an unnumbered equation (\eg \texttt{equation*}, \texttt{gather*}, \texttt{flalign*}, \dots), the punctuation is flushed right to where the numbering would stand. This is done with the \texttt{\textbackslash tag*} command of \texttt{amsmath}, so \cs{zpunct} cannot be combined with \cs{tag} in the same unnumbered equation. A row suppressed with \texttt{\textbackslash notag} or \texttt{\textbackslash nonumber} inside a numbered environment discards the punctuation. Place the command in the line it ends, before a newline command (\eg \texttt{\textbackslash\textbackslash}).
+
+The following example punctuates the equations in a numbered block:
+\begin{tcblisting}{
+    zmathex,
+    %halign lower=center,
+    lefthand width=0.6\linewidth
+  }
+  Equations \ref{eq:energy} and \ref{eq:force}
+  show important results:
+  \begin{gather}
+    \label{eq:energy}
+    E = mc^2                        \zpunct{,}
+    \\
+    \label{eq:force}
+    \vec{F} = m \cdot \vec{a}       \zpunct{.}
+  \end{gather}
+\end{tcblisting}
+
+while this example shows how to complement text within an unnumbered block, where punctuation is flushed right without requiring the numbering:
+\begin{tcblisting}{
+    zmathex,
+    %halign lower=center,
+    lefthand width=0.6\linewidth
+  }
+  The following equations show important results:
+  \begin{flalign*}
+    & E = mc^2                      \zpunct{, and}
+    \\
+    & \vec{F} = m \cdot \vec{a}     \zpunct{.}
+  &\end{flalign*}
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection{\cs{zline} — arbitrary underline stacking}
+% ------------------------------------------------------------------------------
+
+\macroDescription{\zline}
+The \cs{zline} utility structurally attaches an arbitrary \macroMeta{count} of horizontal underline rules beneath a target \macroMeta{symbol}. By default, omitting the optional parameter draws a single line. The execution engine dynamically computes the natural horizontal bounding box of the input \macroMeta{symbol}, ensuring that the rule widths match the content exactly without leaking into adjacent characters. It is safe for direct deployment in both text and math modes. Its options are listed in Table~\ref{tb:zline}.
+
+\begin{syntax}
+  \cs{zline}\macroOpt{count}\macroArg{symbol}
+\end{syntax}
+
+\begin{macroTable}{tb:zline}{Options for \cs{zline}, \cs{zvec} and \cs{zmat}.}
+
+    \opt{zline-depth}
+        & \optval{line\@depth}
+        & Vertical gap from the symbol's bottom edge to the first rule (Figure~\ref{fig:zline}).
+    \\
+
+    \opt{zline-thickness}
+        & \optval{line\@thickness}
+        & Absolute typographic thickness of each individual underline rule.
+    \\
+
+    \opt{zline-separation}
+        & \optval{line\@separation}
+        & Vertical gap between consecutive stacked rules.
+    \\
+
+\end{macroTable}
+
+The macro was inspired by the popular \textsf{ulem} package, but alters some of its functionalities: instead of line weights that depend on ambient font sizes (which may cause layout collisions), \cs{zline} enforces a fixed baseline and thickness alignment. The absolute vertical layout dimensions of rule thickness, clearances from the symbol's bottom edge, and relative gaps between stacked lines are governed by the \opt{zline-thickness}, \opt{zline-depth}, and \opt{zline-separation} package options. The symbol box is typeset once with \cs{mathsurround} suppressed. The dashed line in Figure~\ref{fig:zline} is the baseline of the symbol, which \cs{zline} keeps aligned with the surrounding text; it is purely orientational, and every rule's position is measured from the box edges.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[scale=1.25, >=Stealth]
+    % symbol box and baseline
+    \draw[zmglyph] (0,-0.3) rectangle (1.6,1.5);
+    \node at (0.8,0.6) {\Large $u$};
+    \draw[zmref] (-0.5,0) -- (2.2,0) node[right, font=\scriptsize\itshape, gray] {baseline};
+    % two stacked rules
+    \fill (0,-1.2) rectangle (1.6,-1.0);
+    \fill (0,-1.9) rectangle (1.6,-1.7);
+    % vertical dimensions
+    \draw[zmext] (1.6,-0.3) -- (2.9,-0.3);
+    \draw[zmext] (1.6,-1.0) -- (2.9,-1.0);
+    \draw[zmext] (1.6,-1.2) -- (2.9,-1.2);
+    \draw[zmext] (1.6,-1.7) -- (2.9,-1.7);
+    \draw[zmdim] (2.7,-0.3) -- node[zmlbl, right] {line-depth}     (2.7,-1.0);
+    \draw[zmdim] (2.7,-1.0) -- node[zmlbl, right] {line-thickness} (2.7,-1.2);
+    \draw[zmdim] (2.7,-1.2) -- node[zmlbl, right] {line-sep}       (2.7,-1.7);
+    % width
+    \draw[zmext] (0,-1.9) -- (0,-2.6);
+    \draw[zmext] (1.6,-1.9) -- (1.6,-2.6);
+    \draw[zmdim] (0,-2.5) -- node[font=\scriptsize, below] {natural width of the symbol} (1.6,-2.5);
+  \end{tikzpicture}
+  \caption{Schematic of the \cs{zline} options (here two rules, as in \cs{zmat}). The shaded box is the symbol's box; the rules are drawn filled, with the same width. Distances are exaggerated for legibility.}
+  \label{fig:zline}
+\end{figure}
+
+\macroDescription{\zvec}
+\macroDescription{\zmat}
+For convenience in physics and engineering notation, the package provides the secondary shorthand macros \cs{zvec} and \cs{zmat} to standardize vector and matrix underline conventions, as an alternative to bold fonts, \cs{vec}, \cs{overleftrightarrow} and others, that can lead to dense notation. Both commands call \cs{zline}, generating one and two underlines respectively.
+
+\begin{syntax}
+  \cs{zvec}\macroArg{symbol} \qquad \cs{zmat}\macroArg{symbol}
+\end{syntax}
+
+The following example compares \cs{zvec} and \cs{zmat} with the \textsf{ulem} and accent alternatives, and shows a triple underline and the difference between underlining an expression and a symbol:
+
+\begin{tcblisting}{
+    zmathex,
+    halign lower=center,
+    lefthand width=0.8\linewidth
+  }
+  $\zvec{u} = \vec{u} \ne \uline{u}$                  % zvec vs ulem command
+  \nl
+  $\zmat{A} = \overleftrightarrow{A} \ne \uuline{A}$  % zmat vs ulem command
+  \nl
+  \zline[3]{W}                                        % triple underline
+  \nl
+  $\zline{x^2} \ne \zline{x}^2$                       % composition
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection{\cs{zfrac} — flexible fraction}
+% ------------------------------------------------------------------------------
+
+\macroDescription{\zfrac}
+The \cs{zfrac} utility typesets a fraction whose visual style and argument parenthesisation are controlled independently, by stars and by the choice of delimiter around each argument. If only one argument is supplied, it is treated as the denominator and the numerator defaults to \texttt{1}. The entire output is always wrapped in \cs{ensuremath}, so \cs{zfrac} is safe in text, inline and display mode to contain math symbols (\eg{} Greek letters, radicals). It has no package options.
+
+\begin{syntax}
+  \cs{zfrac}\macroStar\macroStar\macroOpt{num}\macroArg{num}\macroOpt{den}\macroArg{den}
+\end{syntax}
+
+Starring:
+\begin{itemize}[nosep]
+  \item \textbf{none (-)} — standard \cs{frac} layout.
+  \item \textbf{one (\macroStar)} — oblique \cs{nicefrac} layout, suited to inline use.
+  \item \textbf{two (\macroStar\macroStar)} — slash notation, \macroMeta{num}\texttt{/}\macroMeta{den}.
+\end{itemize}
+
+Each argument may be given in braces (\macroArg{x}, plain) or in brackets (\macroOpt{x}, parenthesised, \ie{} wrapped in \cs{left(}\,\ldots\,\cs{right)}). The two delimiter choices are independent, so \eg{} only the denominator may be parenthesised while the numerator is left plain. The following table lists every delimiter combination, with some accompanying examples below:
+
+\begin{macroTable*}[2]
+    \cs{zfrac}\texttt{\{n\}\{d\}}
+        & \macroDisp{ \zfrac{n}{d} }
+        & \macroDisp*{ \zfrac{n}{d} }
+        & plain numerator, plain denominator
+    \\
+
+    \cs{zfrac}\texttt{\{n\}[d]}
+        & \macroDisp{ \zfrac{n}[d] }
+        & \macroDisp*{ \zfrac{n}[d] }
+        & parenthesised denominator
+    \\
+
+    \cs{zfrac}\texttt{[n]\{d\}}
+        & \macroDisp{ \zfrac[n]{d} }
+        & \macroDisp*{ \zfrac[n]{d} }
+        & parenthesised numerator
+    \\
+
+    \cs{zfrac}\texttt{[n][d]}
+        & \macroDisp{ \zfrac[n][d] }
+        & \macroDisp*{ \zfrac[n][d] }
+        & both parenthesised
+    \\
+
+    \cs{zfrac}\texttt{\{d\}}
+        & \macroDisp{ \zfrac{d} }
+        & \macroDisp*{ \zfrac{d} }
+        & single arg $\implies$ numerator = 1
+    \\
+
+    \cs{zfrac}\texttt{[d]}
+        & \macroDisp{ \zfrac[d] }
+        & \macroDisp*{ \zfrac[d] }
+        & parenthesised, with numerator = 1
+    \\
+\end{macroTable*}
+
+\begin{tcblisting}{
+    zmathex,
+    halign lower=center,
+    lefthand width=0.8\linewidth
+  }
+  \zfrac{\alpha}{\beta}                 % standard frac
+  \nl
+  \zfrac*{x}{y}                         % nicefrac
+  \nl
+  \zfrac**{x}{y}                        % slash
+  \nl
+  $\zfrac{\alpha}[\beta+1]$             % parenthesise denominator
+  \nl
+  $\zfrac[\alpha+1]{\beta}$             % parenthesise numerator
+  \nl
+  $\zfrac{\lambda}$                     % inverse
+  \nl
+  $e^{-\zfrac{x}} \ne e^{-\zfrac*{x}}$  % context aware
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\clearpage
 \subsection{\cs{zscale} — uniform content scaling}
 % ------------------------------------------------------------------------------
 
@@ -225,7 +433,9 @@ The \cs{zscale} utility scales an arbitrary \macroMeta{math} token vector unifor
 
     \opt{scale-absolute}
         & \optval{scale\@absolute}
-        & \opt{true}: the factors multiply the content set in the \emph{normal} size (display style in display context, text style otherwise), so they are final sizes. \opt{false}: the factors multiply the content set in the ambient style, as \TeX\ would, so both shrinkings stack (all factors $1$ gives plain \LaTeX). In both cases nested calls are never shrunk below the size given by \opt{scale-scriptscript}.
+        & \opt{true}: the factors multiply the content set in the \emph{normal} size (display style in display context, text style otherwise).
+        \opt{false}: the factors multiply the content set in the ambient style, as \TeX\ would, so both factors stack (all factors $1$ gives plain \LaTeX scaling).
+        In both cases, \opt{scale-scriptscript} is set as the lower bound and nested calls do not scale below that (unless set explicitly).
     \\
 
     \opt{scale-display}
@@ -279,16 +489,16 @@ Since a scaled box is invisible to \TeX's math styles, an explicit guard is set 
   $ X^{X^X} \to X^{X^{\zscale{X}}} $                    % scriptscript
 \end{tcblisting}
 
-Every command that scales content using \cs{zscale} has four scale options, one per math style, and a switch analogous to \opt{scale-absolute}, so scaling choices remain independent. The reference is the style of the call for \cs{zscale}, as well as \cs{zdot}, \cs{zarg} and \cs{zprime}. But the reference is the script style of the nucleus, one level below it and never below scriptscript, for \cs{zscript} and \cs{zint}.
+Every command that scales content using \cs{zscale} has four scale options, one per math style, and a switch analogous to \opt{scale-absolute}, so scaling choices remain independent. The reference is the style of the call for \cs{zscale}, as well as \cs{zdot}, \cs{zarg} and \cs{zprime}. But the reference is the script style of the nucleus, one level below it and never below scriptscript, for \cs{zscript}, \cs{zlim} and \cs{zint}.
 
 \textbf{Choosing scaling factors.} Factors can be chosen by deciding how large the output should be compared to standard \TeX\ behavior. If that reference size relative to the normal size is $r$, and the wanted fraction is $k$, then:
 \begin{itemize}[nosep]
   \item when \opt{scale-absolute} is set to \opt{true}, the factor multiplies the normal size, so the output is scaled to $k \times r$;
   \item when \opt{scale-absolute} is set to \opt{false}, the content is already set at the reference size, so the output is scaled to $k$.
 \end{itemize}
-Most math fonts shrink script and scriptscript style to about $70\%$ and $50\%$ of the normal size. So, to make a script-size symbol \eg $90\%$ of the standard script-size symbol, \opt{scale-script} must be $0.9 \times 0.7 = 0.63$ in absolute mode, or $0.9$ in relative mode.
+Most math fonts shrink script and scriptscript style to about $70\%$ and $50\%$ of the normal size, \ie{} $r \approx 0.7$ and $r \approx 0.5$. So, the factor for a script-size symbol must be $k \times r$ in absolute mode, or $k$ in relative mode; \eg{} $0.9 \times 0.7 = 0.63$ in absolute mode (or $0.9$ in relative mode) makes it $90\%$ of the standard script-size symbol.
 
-The following examples show what happens when the scaling is made relative with \cs{setkeys}. They compare unscaled output against the default scaling (absolute), against a relative scaling with unchanged factors, and against a relative scaling with all factors changed to $0.8$:
+The following examples show relative scaling set with \cs{setkeys}. They compare unscaled output against the default scaling (absolute), against a relative scaling with unchanged factors, and against a relative scaling with all factors changed to $0.8$:
 \begin{tcblisting}{
     zmathex,
     halign lower=center,
@@ -358,18 +568,227 @@ The \cs{zdot} command produces a visually heavier centred dot for use as a vecto
 
 The glyph is constructed by scaling \cs{cdot} by the \opt{zdot-scale-}\macroMeta{style} option of the ambient math style (see \opt{zscale}) and moving it vertically so that it sits exactly on the axis of the ambient style, which compensates for the baseline drift that \cs{scalebox} introduces in math mode, in any scale. The command is declared as \cs{mathbin} so that surrounding spacing follows binary-operator conventions. If the dot looks too close in weight to \cs{cdot}, or too heavy inside exponents, adjust the scale of the corresponding style.
 
-The following example contrasts \cs{zdot} with the regular \cs{cdot} between vectors:
+The following example contrasts \cs{zdot} with the regular \cs{cdot} between vectors and shows the output in different font sizes:
+\begin{tcblisting}{
+    zmathex,
+    halign lower=center,
+    lefthand width=0.75\linewidth
+  }
+  \[
+    W = \vec{F} \zdot \vec{d}                           % display
+  \]
+  \nl
+  $u \cdot v \ne \vec{u} \zdot \vec{v}$                 % text
+  \nl
+  $e^{u \cdot v} \ne e^{\vec{u} \zdot \vec{v}}$         % script
+  \nl
+  $e^{A_{u \cdot v}} \ne e^{A_{\vec{u} \zdot \vec{v}}}$ % scriptscript
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection{\cs{zarg} — scaled function argument}
+% ------------------------------------------------------------------------------
+
+\macroDescription{\zarg}
+The \cs{zarg} utility typesets an expression \macroMeta{expr} inside parentheses, scaled, and inserting a small kern immediately before the opening delimiter. This is useful to distinguish function arguments from other uses of parentheses. Its options are listed in Table~\ref{tb:zarg}.
+
+\begin{syntax}
+  \cs{zarg}\macroArg{expr}
+\end{syntax}
+
+\begin{macroTable}{tb:zarg}{Options for \cs{zarg}.}
+
+    \opt{zarg-scale-absolute}
+        & \optval{arg\@scale\@absolute}
+        & As \opt{scale-absolute}, for \cs{zarg}.
+    \\
+
+    \opt{zarg-scale-display}
+        & \optval{arg\@scale\@display}
+        & Scale factor applied to the parenthesised argument block when \cs{zarg} is typeset in display style.
+    \\
+
+    \opt{zarg-scale-text}
+        & \optval{arg\@scale\@text}
+        & As \opt{zarg-scale-display}, in text style.
+    \\
+
+    \opt{zarg-scale-script}
+        & \optval{arg\@scale\@script}
+        & As \opt{zarg-scale-display}, in script style (\eg{} inside an exponent).
+    \\
+
+    \opt{zarg-scale-scriptscript}
+        & \optval{arg\@scale\@scriptscript}
+        & As \opt{zarg-scale-display}, in scriptscript style.
+    \\
+
+    \opt{zarg-kern}
+        & \optval{arg\@kern}
+        & Horizontal kern inserted immediately before the opening parenthesis; its sign and size fine-tune the gap after the function name.
+    \\
+
+\end{macroTable}
+
+The scale factors (\opt{zarg-scale-}\macroMeta{style}, see \opt{zscale}) and horizontal kern (\opt{zarg-kern}) options fine-tune the size and gap between a parent function identifier and its target argument block. It adds no space of its own, so any spacing around it comes from the surrounding source and math atoms alone. It is compatible with text, inline and display modes, and ensure consistent visual density across different font families. Options are governed dynamically, so changes mid-document are supported.
+
+The following examples show a simple argument in math mode, a larger expression as function argument, and the same command used both in text and in math modes:
 
 \begin{tcblisting}{
     zmathex,
     halign lower=center,
-    lefthand width=0.7\linewidth
+    lefthand width=0.62\linewidth
   }
-  $W = \vec{F} \zdot \vec{d}$                     % Work
+  $f(x) \ne f\zarg{x}$    % comparison against parentheses
   \nl
-  $u \cdot v \ne \vec{u} \zdot \vec{v}$           % cdot comparison
+  \[
+    f\left( x^2 - \frac{1}{x} + 1 \right) % dynamic delim.
+    \ne
+    f\zarg{x^2 - \frac{1}{x} + 1} 
+  \]
   \nl
-  $e^{u \cdot v} \ne e^{\vec{u} \zdot \vec{v}}$   % context aware
+  sin\zarg{\theta/2} $ = \text{sin}\zarg{\theta/2}$
+\end{tcblisting}
+
+The scaling follows the math style of the call, so the argument shrinks inside an exponent, and a larger kern opens the gap after the function name:
+
+\begin{tcblisting}{
+    zmathex,
+    halign lower=center,
+    lefthand width=0.62\linewidth
+  }
+  $e^{f(x)} \ne e^{f\zarg{x}}$    % context aware
+  \nl[2]
+  {
+    \setkeys{zmath}{zarg-kern=3mu}
+    $f\zarg{x}$                   % wider gap
+  }
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection{\cs{zdiff} — differential or derivative}
+% ------------------------------------------------------------------------------
+
+\macroDescription{\zdiff}
+The \cs{zdiff} utility typesets either a differential or a derivative operator with respect to \macroMeta{var}, optionally raised to a given \macroMeta{order} (default 1). It is compatible with text, inline and display modes, wrapping its output in \cs{ensuremath}. Its options are listed in Table~\ref{tb:zdiff}.
+
+\begin{syntax}
+  \cs{zdiff}\macroPlus\macroStar\macroStar\macroOpt{order}\macroArg{var}
+\end{syntax}
+
+\begin{macroTable}{tb:zdiff}{Options for \cs{zdiff}.}
+
+    \opt{zdiff-math-separation}
+        & \optval{diff\@math\@separation}
+        & Extra kern inserted before ``d'' in differential form when \cs{zdiff} is called with a leading \macroPlus\ in display math style. It is \emph{added} to the thin space that \TeX\ already puts there.
+    \\
+
+    \opt{zdiff-text-separation}
+        & \optval{diff\@text\@separation}
+        & Same as \opt{zdiff-math-separation}, applied automatically instead whenever \cs{zdiff} is typeset in text, script, or scriptscript style.
+    \\
+
+    \opt{zdiff-kern}
+        & \optval{diff\@kern}
+        & Kern inserted after the fraction in derivative form, separating it from the following operand.
+    \\
+
+\end{macroTable}
+
+Starring:
+\begin{itemize}[nosep]
+  \item \textbf{none (-)} — differential, $\text{d}^{\macroMeta{order}}\macroMeta{var}$, set as a \cs{mathinner} atom: \TeX\ itself supplies the usual thin space against neighbouring ordinary atoms (\eg{} right after \cs{zarg}) in display and text style, none in script styles, and the regular binary or relation spacing after operators such as \cs{zdot}.
+  \item \textbf{one (\macroStar)} — derivative, as a standard \cs{frac}, followed by a larger space (\opt{zdiff-kern}).
+  \item \textbf{two (\macroStar\macroStar)} — derivative, as an oblique \cs{nicefrac}.
+\end{itemize}
+
+The following example prints a differential, a higher-order differential, and the two derivative layouts:
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  \zdiff{x}                                 % differential
+  \nl
+  \zdiff[2]{x}                              % differential, order 2
+  \nl
+  $\zdiff*{x}f \ne \zdiff*[2]{x}f$          % derivative, \frac
+  \nl
+  $\zdiff**{x}(f) \ne \zdiff**[2]{x}(f)$    % derivative, \nicefrac
+\end{tcblisting}
+
+Leaving the bare form free of extra kerns also keeps it usable as an operand. The following example shows that a hand-built derivative of two differentials reproduces the same spacing as writing the fraction out by hand:
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  \[
+  \frac{\zdiff{f}}{\zdiff{x}}
+  =
+  \frac{\text{d}f}{\text{d}x}
+  \]
+\end{tcblisting}
+
+A leading \macroPlus, meaningful only in differential form, \emph{adds} a kern before the ``d'' on top of the spacing \TeX\ already provides (\opt{zdiff-math-separation} in display style, \opt{zdiff-text-separation} in text/script/scriptscript style; chosen automatically to match the ambient math style, similarly to \cs{zint}'s math/text split). Use it whenever the differential needs more visual separation from the preceding term than the normal thin space. Because the base spacing is computed by \TeX, the plain form never doubles the space after \cs{zdot}. The following example compares the default spacing after a dot product against an increased spacing for clarity:
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.6\linewidth,
+    halign lower=center,
+  }
+  \begin{gather*}
+    \int \vec{u} \zdot \zdiff{\vec{A}}    % default
+    \quad \ne \quad
+    \int f\zarg{\vec{x}} \zdiff+[2]{x}    % spaced
+  \end{gather*}
+\end{tcblisting}
+
+% ------------------------------------------------------------------------------
+\clearpage
+\subsection{\cs{zcond} — bar to represent evaluation conditions}
+% ------------------------------------------------------------------------------
+
+\macroDescription{\zcond}
+The \cs{zcond} utility typesets a vertical bar to represent evaluation conditions, with \macroMeta{condition} as a subscript. When \macroMeta{expr} is supplied and no stars are given, the bar auto-sizes via \cs{left.}\,\macroMeta{expr}\,\macroBar{right}, tracking \macroMeta{expr}'s height. Each star instead selects a fixed bar size, in which case \macroMeta{expr} is printed as-is, without \cs{left}/\cs{right} wrapping. It is compatible with text, inline and display modes, wrapping its output in \cs{ensuremath}. It has no package options.
+
+\begin{syntax}
+  \cs{zcond}\macroStar\macroStar\macroStar\macroStar\macroOpt{expr}\macroArg{condition}
+\end{syntax}
+
+Starring:
+\begin{itemize}[nosep]
+  \item \textbf{none (-)} — auto-sized bar.
+  \item \textbf{one (\macroStar)} — fixed \macroBar{big}.
+  \item \textbf{two (\macroStar\macroStar)} — fixed \macroBar{Big}.
+  \item \textbf{three (\macroStar\macroStar\macroStar)} — fixed \macroBar{bigg}.
+  \item \textbf{four (\macroStar\macroStar\macroStar\macroStar)} — fixed \macroBar{Bigg}.
+\end{itemize}
+
+The following example prints the five bar sizes side by side:
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  \zcond{x=0}\zcond*{x=0}\zcond**{x=0}\zcond***{x=0}\zcond****{x=0}
+\end{tcblisting}
+
+The \macroMeta{condition} subscript is scaled by \cs{zscale} only in the auto-sized (no-star) path; it is printed at full size whenever any star is given. The following example shows the bar after a derivative, with an auto-sized bar around \macroMeta{expr}, and with a fixed-size bar:
+
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.7\linewidth,
+    halign lower=center,
+  }
+  $\zdiff**{x}g \zcond{x=0}$         % default size
+  \nl
+  $\zcond[\zdiff*{x}g]{x=0}$         % auto-sized
+  \nl
+  $\zcond**[\zdiff*{x}g]{x=0}$       % fixed \Big|
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
@@ -540,186 +959,11 @@ The following examples show scripts in text and math modes, with and without sca
 
 % ------------------------------------------------------------------------------
 \clearpage
-\subsection{\cs{zarg} — scaled function argument}
-% ------------------------------------------------------------------------------
-
-\macroDescription{\zarg}
-The \cs{zarg} utility typesets an expression \macroMeta{expr} inside parentheses, scaled, and inserting a small kern immediately before the opening delimiter. This is useful to distinguish function arguments from other uses of parentheses. Its options are listed in Table~\ref{tb:zarg}.
-
-\begin{syntax}
-  \cs{zarg}\macroArg{expr}
-\end{syntax}
-
-\begin{macroTable}{tb:zarg}{Options for \cs{zarg}.}
-
-    \opt{zarg-scale}
-        & \optval{arg\@scale}
-        & Font scale factor applied directly to the parenthesised argument block.
-    \\
-
-    \opt{zarg-kern}
-        & \optval{arg\@kern}
-        & Horizontal kern inserted immediately before the opening parenthesis; its sign and size fine-tune the gap after the function name.
-    \\
-
-\end{macroTable}
-
-The scale factor (\opt{zarg-scale}) and horizontal kern (\opt{zarg-kern}) options fine-tune the size and gap between a parent function identifier and its target argument block. It adds no space of its own, so any spacing around it comes from the surrounding source and math atoms alone. It is compatible with text, inline and display modes, and ensure consistent visual density across different font families. Options are governed dynamically, so changes mid-document are supported.
-
-The following examples show a simple argument in math mode, a complex expression, and the same command used in text and in math:
-
-\begin{tcblisting}{
-    zmathex,
-    halign lower=center,
-    lefthand width=0.62\linewidth
-  }
-  $f(x) \ne f\zarg{x}$    % comparison against parentheses
-  \nl
-  \[
-    f\left( x^2 - \frac{1}{x} + 1 \right) % dynamic delim.
-    \ne
-    f\zarg{x^2 - \frac{1}{x} + 1} 
-  \]
-  \nl
-  sin\zarg{\theta/2} $ = \text{sin}\zarg{\theta/2}$
-\end{tcblisting}
-
-% ------------------------------------------------------------------------------
-\clearpage
-\subsection{\cs{zline} — arbitrary underline stacking}
-% ------------------------------------------------------------------------------
-
-\macroDescription{\zline}
-The \cs{zline} utility structurally attaches an arbitrary \macroMeta{count} of horizontal underline rules beneath a target \macroMeta{symbol}. By default, omitting the optional parameter draws a single line. The execution engine dynamically computes the natural horizontal bounding box of the input \macroMeta{symbol}, ensuring that the rule widths match the content exactly without leaking into adjacent characters. It is safe for direct deployment in both text and math modes. Its options are listed in Table~\ref{tb:zline}.
-
-\begin{syntax}
-  \cs{zline}\macroOpt{count}\macroArg{symbol}
-\end{syntax}
-
-\begin{macroTable}{tb:zline}{Options for \cs{zline}, \cs{zvec} and \cs{zmat}.}
-
-    \opt{zline-depth}
-        & \optval{line\@depth}
-        & Vertical gap from the symbol's bottom edge to the first rule (Figure~\ref{fig:zline}).
-    \\
-
-    \opt{zline-thickness}
-        & \optval{line\@thickness}
-        & Absolute typographic thickness of each individual underline rule.
-    \\
-
-    \opt{zline-separation}
-        & \optval{line\@separation}
-        & Vertical gap between consecutive stacked rules.
-    \\
-
-\end{macroTable}
-
-The macro was inspired by the popular \textsf{ulem} package, but alters some of its functionalities: instead of line weights that depend on ambient font sizes (which may cause layout collisions), \cs{zline} enforces a fixed baseline and thickness alignment. The absolute vertical layout dimensions of rule thickness, clearances from the symbol's bottom edge, and relative gaps between stacked lines are governed by the \opt{zline-thickness}, \opt{zline-depth}, and \opt{zline-separation} package options. The symbol box is typeset once with \cs{mathsurround} suppressed. The dashed line in Figure~\ref{fig:zline} is the baseline of the symbol, which \cs{zline} keeps aligned with the surrounding text; it is purely orientational, and every rule's position is measured from the box edges.
-
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[scale=1.25, >=Stealth]
-    % symbol box and baseline
-    \draw[zmglyph] (0,-0.3) rectangle (1.6,1.5);
-    \node at (0.8,0.6) {\Large $u$};
-    \draw[zmref] (-0.5,0) -- (2.2,0) node[right, font=\scriptsize\itshape, gray] {baseline};
-    % two stacked rules
-    \fill (0,-1.2) rectangle (1.6,-1.0);
-    \fill (0,-1.9) rectangle (1.6,-1.7);
-    % vertical dimensions
-    \draw[zmext] (1.6,-0.3) -- (2.9,-0.3);
-    \draw[zmext] (1.6,-1.0) -- (2.9,-1.0);
-    \draw[zmext] (1.6,-1.2) -- (2.9,-1.2);
-    \draw[zmext] (1.6,-1.7) -- (2.9,-1.7);
-    \draw[zmdim] (2.7,-0.3) -- node[zmlbl, right] {line-depth}     (2.7,-1.0);
-    \draw[zmdim] (2.7,-1.0) -- node[zmlbl, right] {line-thickness} (2.7,-1.2);
-    \draw[zmdim] (2.7,-1.2) -- node[zmlbl, right] {line-sep}       (2.7,-1.7);
-    % width
-    \draw[zmext] (0,-1.9) -- (0,-2.6);
-    \draw[zmext] (1.6,-1.9) -- (1.6,-2.6);
-    \draw[zmdim] (0,-2.5) -- node[font=\scriptsize, below] {natural width of the symbol} (1.6,-2.5);
-  \end{tikzpicture}
-  \caption{Schematic of the \cs{zline} options (here two rules, as in \cs{zmat}). The shaded box is the symbol's box; the rules are drawn filled, with the same width. Distances are exaggerated for legibility.}
-  \label{fig:zline}
-\end{figure}
-
-\macroDescription{\zvec}
-\macroDescription{\zmat}
-For convenience in physics and engineering notation, the package provides the secondary shorthand macros \cs{zvec} and \cs{zmat} to standardize vector and matrix underline conventions, as an alternative to bold fonts, \cs{vec}, \cs{overleftrightarrow} and others, that can lead to dense notation. Both commands call \cs{zline}, generating one and two underlines respectively.
-
-\begin{syntax}
-  \cs{zvec}\macroArg{symbol} \qquad \cs{zmat}\macroArg{symbol}
-\end{syntax}
-
-The following example compares \cs{zvec} and \cs{zmat} with the \textsf{ulem} and accent alternatives, and shows a triple underline and the difference between underlining an expression and a symbol:
-
-\begin{tcblisting}{
-    zmathex,
-    halign lower=center,
-    lefthand width=0.8\linewidth
-  }
-  $\zvec{u} = \vec{u} \ne \uline{u}$                  % zvec vs ulem command
-  \nl
-  $\zmat{A} = \overleftrightarrow{A} \ne \uuline{A}$  % zmat vs ulem command
-  \nl
-  \zline[3]{W}                                        % triple underline
-  \nl
-  $\zline{x^2} \ne \zline{x}^2$                       % composition
-\end{tcblisting}
-
-% ------------------------------------------------------------------------------
-\clearpage
-\subsection{\cs{zpunct} — punctuation at the end of a display line}
-% ------------------------------------------------------------------------------
-
-\macroDescription{\zpunct}
-The \cs{zpunct} command provides a semantic hook to end a line of a mathematical display with a punctuation mark \macroMeta{punct}. Rather than dropping the token right at the end of the math expression—which can cause awkward line breaks or misaligned punctuation tracking—this utility moves it to the right end of the line, where the equation number goes. It works with and without equation numbers. It has no package options.
-
-\begin{syntax}
-  \cs{zpunct}\macroArg{punct}
-\end{syntax}
-
-In a numbered equation, the punctuation rests immediately before the number, separated from it by a space. In an unnumbered equation (\eg \texttt{equation*}, \texttt{gather*}, \texttt{flalign*}, \dots), the punctuation is flushed right to where the numbering would stand. This is done with the \texttt{\textbackslash tag*} command of \texttt{amsmath}, so \cs{zpunct} cannot be combined with \cs{tag} in the same unnumbered equation. A row suppressed with \texttt{\textbackslash notag} or \texttt{\textbackslash nonumber} inside a numbered environment discards the punctuation. Place the command in the line it ends, before a newline command (\eg \texttt{\textbackslash\textbackslash}).
-
-The following example ends two numbered equations of a numbered block:
-\begin{tcblisting}{
-    zmathex,
-    %halign lower=center,
-    lefthand width=0.6\linewidth
-  }
-  Equations \ref{eq:energy} and \ref{eq:force}
-  show important results:
-  \begin{gather}
-    \label{eq:energy}
-    E = mc^2                        \zpunct{,}
-    \\
-    \label{eq:force}
-    \vec{F} = m \cdot \vec{a}       \zpunct{.}
-  \end{gather}
-\end{tcblisting}
-
-while this example shows how to complement text within an unnumbered block, where punctuation is flushed right without requiring numbered equations:
-\begin{tcblisting}{
-    zmathex,
-    %halign lower=center,
-    lefthand width=0.6\linewidth
-  }
-  The following equations show important results:
-  \begin{flalign*}
-    & E = mc^2                      \zpunct{, and}
-    \\
-    & \vec{F} = m \cdot \vec{a}     \zpunct{.}
-  &\end{flalign*}
-\end{tcblisting}
-
-% ------------------------------------------------------------------------------
-\clearpage
 \subsection{\cs{zprime} — prime accents}
 % ------------------------------------------------------------------------------
 
 \macroDescription{\zprime}
-The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks (default $n=1$). Its size automatically tracks the math style of the symbol being primed: primes are enlarged (\opt{zprime-scale-normal}) in display or text style, and reduced (\opt{zprime-scale-script}) when the symbol already sits inside a script — \ie{} an exponent, a subscript, and so on. This makes \cs{zprime} safe to nest inside other scripts without looking oversized, and lets \cs{left}/\cs{right} delimiters around a primed expression size correctly, since the output box covers both the symbol and the primes. Its options are listed in Table~\ref{tb:zprime}.
+The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified number \macroOpt{n} of prime marks (default $n=1$). Its size automatically tracks the math style of the symbol being primed, through one scale factor per style (\opt{zprime-scale-}\macroMeta{style}, see \opt{zscale}), so primes shrink when the symbol already sits inside a script — \ie{} an exponent, a subscript, and so on. This makes \cs{zprime} safe to nest inside other scripts without looking oversized, and lets \cs{left}/\cs{right} delimiters around a primed expression size correctly, since the output box covers both the symbol and the primes. Its options are listed in Table~\ref{tb:zprime}.
 
 \begin{syntax}
   \cs{zprime}\macroStar\macroOpt{n}\macroOpt{v}\macroOpt{h}\macroArg{symbol}
@@ -727,8 +971,8 @@ The \cs{zprime} utility adorns a target \macroMeta{symbol} with a specified numb
 
 Starring:
 \begin{itemize}[nosep]
-  \item \textbf{none (-)} — accent-style layout, primes centered above the symbol as a group, regardless of the number of marks.
-  \item \textbf{one (\macroStar)} — superscript-style layout, primes flush to the symbol's right edge.
+  \item \textbf{none (-)} — superscript-style layout, primes flush to the symbol's right edge.
+  \item \textbf{one (\macroStar)} — accent-style layout, primes centered above the symbol as a group, regardless of the number of marks.
 \end{itemize}
 
 \begin{macroTable}[Option & Math & Text & Description]{tb:zprime}{Options for \cs{zprime}. The \macroMeta{mode} is \opt{math} (display style) or \opt{text} (text, script and scriptscript style).}
@@ -736,15 +980,27 @@ Starring:
     \macroRow{Cluster}
     \opt{zprime-separation}
         & \macroSpan{\optval{prime\@sep}}
-        & Mu-unit kern inserted between consecutive prime glyphs. Fine-grained; use a few mu to get a visible change.
+        & Mu-unit kern inserted between consecutive prime glyphs, scaled together with them. Fine-grained; use a few mu to get a visible change.
     \\
-    \opt{zprime-scale-normal}
-        & \macroSpan{\optval{prime\@scale\@normal}}
-        & Scale factor applied to primes when the symbol being primed sits in display or text style.
+    \opt{zprime-scale-absolute}
+        & \macroSpan{\optval{prime\@scale\@absolute}}
+        & As \opt{scale-absolute}, for the prime cluster.
+    \\
+    \opt{zprime-scale-display}
+        & \macroSpan{\optval{prime\@scale\@display}}
+        & Scale factor applied to the prime cluster when the symbol being primed sits in display style.
+    \\
+    \opt{zprime-scale-text}
+        & \macroSpan{\optval{prime\@scale\@text}}
+        & As \opt{zprime-scale-display}, in text style.
     \\
     \opt{zprime-scale-script}
         & \macroSpan{\optval{prime\@scale\@script}}
-        & Scale factor applied to primes when the symbol being primed already sits inside a script (e.g. an exponent).
+        & As \opt{zprime-scale-display}, in script style (\eg{} an exponent).
+    \\
+    \opt{zprime-scale-scriptscript}
+        & \macroSpan{\optval{prime\@scale\@scriptscript}}
+        & As \opt{zprime-scale-display}, in scriptscript style.
     \\
 
     \macroRow{Frame}
@@ -765,16 +1021,6 @@ Starring:
         & Extra depth reserved below the union of symbol and primes.
     \\
 
-    \macroRow{Accent Form}
-    \macroKey{zprime}{accent-v}
-        & \optval{prime\@math\@accent\@v} & \optval{prime\@text\@accent\@v}
-        & Symbol \emph{top} edge to the \emph{bottom} edge of the prime cluster.
-    \\
-    \macroKey{zprime}{accent-h}
-        & \optval{prime\@math\@accent\@h} & \optval{prime\@text\@accent\@h}
-        & Shift of the cluster from its centred position.
-    \\
-
     \macroRow{Superscript Form}
     \macroKey{zprime}{script-v}
         & \optval{prime\@math\@script\@v} & \optval{prime\@text\@script\@v}
@@ -785,29 +1031,73 @@ Starring:
         & Symbol \emph{right} edge to the \emph{left} edge of the prime cluster.
     \\
 
+    \macroRow{Accent Form}
+    \macroKey{zprime}{accent-v}
+        & \optval{prime\@math\@accent\@v} & \optval{prime\@text\@accent\@v}
+        & Symbol \emph{top} edge to the \emph{bottom} edge of the prime cluster.
+    \\
+    \macroKey{zprime}{accent-h}
+        & \optval{prime\@math\@accent\@h} & \optval{prime\@text\@accent\@h}
+        & Shift of the cluster from its centred position.
+    \\
+
 \end{macroTable}
 
-All positions share one Cartesian system ($x$ positive to the right, $y$ positive upward) and are measured from the \emph{edges of the symbol} to the \emph{nearest edge} of the prime cluster: the vertical position is the $y$ coordinate of the cluster's bottom edge, so negative values lower the primes into the symbol, while the horizontal position is the cluster's shift from its reference (centred for \opt{accent}, the symbol's right edge for \opt{script}). All values are dimensionless \emph{ratios}, with vertical options (\opt{v}, \opt{above}, \opt{below}) relative to the x-height and horizontal ones (\opt{h}, \opt{before}, \opt{after}) to the quad, both in the symbol's math style, so the same values remain visually consistent across styles and scales, including exponents. The optional \macroMeta{v} and \macroMeta{h} (default: empty, \ie{} the package setting for the chosen form and mode) \emph{replace} the corresponding \opt{zprime-}\macroMeta{mode}\opt{-accent-v/h} or \opt{zprime-}\macroMeta{mode}\opt{-script-v/h} setting for the current call, providing local corrections especially useful for tall or wide nuclei such as \cs{int} or \cs{sum}, with or without their own limits (Figure~\ref{fig:zprime}); the examples below illustrate both layouts, script sizing, math-style adaptation, and use inside \cs{left}/\cs{right} delimiters:
+All positions share one Cartesian system ($x$ positive to the right, $y$ positive upward) and are measured from the \emph{edges of the symbol} to the \emph{nearest edge} of the prime cluster: the vertical position is the $y$ coordinate of the cluster's bottom edge, so negative values lower the primes into the symbol, while the horizontal position is the cluster's shift from its reference (the symbol's right edge for \opt{script}, centred for \opt{accent}). All values are dimensionless \emph{ratios}, with vertical options (\opt{v}, \opt{above}, \opt{below}) relative to the x-height and horizontal ones (\opt{h}, \opt{before}, \opt{after}) to the quad, both in the symbol's math style, so the same values remain visually consistent across styles and scales, including exponents. The optional \macroMeta{v} and \macroMeta{h} (default: empty, \ie{} the package setting for the chosen form and mode) \emph{replace} the corresponding \opt{zprime-}\macroMeta{mode}\opt{-script-v/h} or \opt{zprime-}\macroMeta{mode}\opt{-accent-v/h} setting for the current call, providing local corrections especially useful for tall or wide nuclei such as \cs{int} or \cs{sum}, with or without their own limits (Figure~\ref{fig:zprime}); the examples below illustrate both layouts, script sizing, math-style adaptation, and use inside \cs{left}/\cs{right} delimiters:
 \begin{tcblisting}{
     zmathex,
     halign lower=center,
     lefthand width=0.72\linewidth
   }
-  \zprime{x} $\ne$ \zprime*{x}              % accent vs superscript
+  \zprime{x} $\ne$ \zprime*{x}              % superscript vs accent
   \nl
   $\zprime[2]{y} \ne \zprime*[2]{y}$        % double primes
   \nl
   $e^{-\zprime{x}} \ne e^{-\zprime*{x}}$    % context aware
-  \nl[2]
-  $
+  \nl
+  \[
   \left(1 - \zprime{x}\right)^2             % \left and \right
   \ne
   \left(1 - \zprime*{x}\right)^2
-  $
+  \]
 \end{tcblisting}
 
 \begin{figure}[htbp]
   \centering
+  \begin{subfigure}[b]{0.48\linewidth}
+    \centering
+    \begin{tikzpicture}[scale=0.8, >=Stealth]
+      % output frame, nucleus, reference lines and prime cluster
+      \draw[zmframe] (-0.3,-0.5) rectangle (3.8,3.2);
+      \draw[zmglyph] (0,0) rectangle (2,2);
+      \node at (1,0.8) {\Large $x$};
+      \draw[zmref] (2,-0.3) -- (2,3.6);
+      \draw[zmref] (-0.5,2) -- (4.9,2);
+      \draw[zmlim] (2.5,1.4) rectangle (3.5,2.6);
+      \node at (3,2.05) {$\prime\prime$};
+      % vertical: nucleus top edge to cluster bottom edge
+      \draw[zmext] (3.5,1.4) -- (5.0,1.4);
+      \draw[zmdim] (4.9,2.0) -- node[zmlbl, right] {script-v} (4.9,1.4);
+      % horizontal: nucleus right edge to cluster left edge
+      \draw[zmext] (2.5,2.6) -- (2.5,3.4);
+      \draw[zmdim] (2,3.3) -- node[zmlbl, above] {script-h} (2.5,3.3);
+      % output frame clearances
+      \draw[zmext] (3.5,2.6) -- (4.3,2.6);
+      \draw[zmext] (3.8,3.2) -- (4.3,3.2);
+      \draw[zmdim] (4.2,2.6) -- node[zmlbl, right] {above} (4.2,3.2);
+      \draw[zmext] (2,0) -- (4.3,0);
+      \draw[zmext] (3.8,-0.5) -- (4.3,-0.5);
+      \draw[zmdim] (4.2,0) -- node[zmlbl, right] {below} (4.2,-0.5);
+      \draw[zmext] (-0.3,-0.5) -- (-0.3,-1.2);
+      \draw[zmext] (0,0) -- (0,-1.2);
+      \draw[zmdim] (0,-1.1) -- node[zmlbl, below] {before} (-0.3,-1.1);
+      \draw[zmext] (3.5,1.4) -- (3.5,-1.2);
+      \draw[zmext] (3.8,-0.5) -- (3.8,-1.2);
+      \draw[zmdim] (3.5,-1.1) -- node[zmlbl, below] {after} (3.8,-1.1);
+    \end{tikzpicture}
+    \caption{Superscript form (unstarred). Reference: right edge.}
+  \end{subfigure}
+  \hfill
   \begin{subfigure}[b]{0.48\linewidth}
     \centering
     \begin{tikzpicture}[scale=0.8, >=Stealth]
@@ -840,45 +1130,34 @@ All positions share one Cartesian system ($x$ positive to the right, $y$ positiv
       \draw[zmext] (2.4,-0.5) -- (2.4,-1.2);
       \draw[zmdim] (2.1,-1.1) -- node[zmlbl, below] {after} (2.4,-1.1);
     \end{tikzpicture}
-    \caption{Accent form (unstarred). Dashed box: centred position.}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.48\linewidth}
-    \centering
-    \begin{tikzpicture}[scale=0.8, >=Stealth]
-      % output frame, nucleus, reference lines and prime cluster
-      \draw[zmframe] (-0.3,-0.5) rectangle (3.8,3.2);
-      \draw[zmglyph] (0,0) rectangle (2,2);
-      \node at (1,0.8) {\Large $x$};
-      \draw[zmref] (2,-0.3) -- (2,3.6);
-      \draw[zmref] (-0.5,2) -- (4.9,2);
-      \draw[zmlim] (2.5,1.4) rectangle (3.5,2.6);
-      \node at (3,2.05) {$\prime\prime$};
-      % vertical: nucleus top edge to cluster bottom edge
-      \draw[zmext] (3.5,1.4) -- (5.0,1.4);
-      \draw[zmdim] (4.9,2.0) -- node[zmlbl, right] {script-v} (4.9,1.4);
-      % horizontal: nucleus right edge to cluster left edge
-      \draw[zmext] (2.5,2.6) -- (2.5,3.4);
-      \draw[zmdim] (2,3.3) -- node[zmlbl, above] {script-h} (2.5,3.3);
-      % output frame clearances
-      \draw[zmext] (3.5,2.6) -- (4.3,2.6);
-      \draw[zmext] (3.8,3.2) -- (4.3,3.2);
-      \draw[zmdim] (4.2,2.6) -- node[zmlbl, right] {above} (4.2,3.2);
-      \draw[zmext] (2,0) -- (4.3,0);
-      \draw[zmext] (3.8,-0.5) -- (4.3,-0.5);
-      \draw[zmdim] (4.2,0) -- node[zmlbl, right] {below} (4.2,-0.5);
-      \draw[zmext] (-0.3,-0.5) -- (-0.3,-1.2);
-      \draw[zmext] (0,0) -- (0,-1.2);
-      \draw[zmdim] (0,-1.1) -- node[zmlbl, below] {before} (-0.3,-1.1);
-      \draw[zmext] (3.5,1.4) -- (3.5,-1.2);
-      \draw[zmext] (3.8,-0.5) -- (3.8,-1.2);
-      \draw[zmdim] (3.5,-1.1) -- node[zmlbl, below] {after} (3.8,-1.1);
-    \end{tikzpicture}
-    \caption{Superscript form (\macroStar). Reference: right edge.}
+    \caption{Accent form (\macroStar). Dashed box: centred position.}
   \end{subfigure}
   \caption{Schematic of the \cs{zprime} options, written without the \opt{zprime-}\macroMeta{mode}\opt{-} prefix. Each vertical option is the distance from the symbol's top edge to the cluster's bottom edge (negative values lower the primes into the symbol); each horizontal option is the shift of the cluster from its dashed reference. All are ratios of the x-height (vertical) or quad (horizontal) of the symbol's style. The thick frame is the box \cs{zprime} hands to \TeX: it covers the \emph{union} of the symbol and the cluster, extended by the signed \opt{before}, \opt{after}, \opt{above} and \opt{below} margins, so neighbouring lines are pushed away. The kern \opt{zprime-separation} between consecutive primes is not drawn; distances are exaggerated for legibility.}
   \label{fig:zprime}
 \end{figure}
+
+This example shows how primes do not overlap with adjacent lines:
+\begin{tcblisting}{
+    zmathex,
+    lefthand width=0.55\linewidth,
+  }
+  Previous line, does not overlap.\\
+  Tall nucleus: $\zprime*{\int} f \zdiff{x}$.\\
+  Subsequent line does not overlap.
+\end{tcblisting}
+
+The primes are scaled as a whole by the factor of the style of the symbol, so a larger factor enlarges the cluster together with the kern between its marks, which can also be tuned on its own:
+\begin{tcblisting}{
+    zmathex,
+    halign lower=center,
+    lefthand width=0.55\linewidth
+  }
+  \[
+    \setkeys{zmath}{zprime-scale-display=1.8}
+    \setkeys{zmath}{zprime-separation=-3mu}
+    \zprime*[2]{\prod} \ne \zprime[2]{\prod}
+  \]
+\end{tcblisting}
 
 These examples show how primes can be moved out of their default position:
 \begin{tcblisting}{
@@ -888,239 +1167,147 @@ These examples show how primes can be moved out of their default position:
   }  
   \nl
   \begin{gather*}
-    \zprime[1][][-0.06]{\int^{\infty}}      % pushed left
+    \zprime*[1][][-0.06]{\int^{\infty}}     % pushed left
     \ne
-    \zprime{\int^{\infty}}
+    \zprime*{\int^{\infty}}
     \ne
-    \zprime{\int}^{\infty}
+    \zprime*{\int}^{\infty}
     \nl[3]
-    \zprime[3][][0.06]{\int^{\infty}}       % pushed right
+    \zprime*[3][][0.06]{\int^{\infty}}      % pushed right
     \ne
-    \zprime[3]{\int^{\infty}}
+    \zprime*[3]{\int^{\infty}}
     \ne
-    \zprime[3]{\int}^{\infty}
+    \zprime*[3]{\int}^{\infty}
     \nl[3]
-    \zprime*[2][-2.2][0.03]{\sum_j^{\infty}} % pushed down and right
+    \zprime[2][-2.2][0.03]{\sum_j^{\infty}} % pushed down and right
     \ne
-    \zprime*{\sum_j^{\infty}}
+    \zprime{\sum_j^{\infty}}
   \end{gather*}
 \end{tcblisting}
 
-Finally, an example of how primes do not overlap with adjacent lines:
-\begin{tcblisting}{
-    zmathex,
-    lefthand width=0.55\linewidth,
-  }
-  Previous line, does not overlap.\\
-  Tall nucleus: $\zprime{\int} f \zdiff{x}$.\\
-  Subsequent line does not overlap.
-\end{tcblisting}
-
-
 % ------------------------------------------------------------------------------
 \clearpage
-\subsection{\cs{zfrac} — flexible fraction}
+\subsection{\cs{zlim} — limit with variable and value}
 % ------------------------------------------------------------------------------
 
-\macroDescription{\zfrac}
-The \cs{zfrac} utility typesets a fraction whose visual style and argument parenthesisation are controlled independently, by stars and by the choice of delimiter around each argument. If only one argument is supplied, it is treated as the denominator and the numerator defaults to \texttt{1}. The entire output is always wrapped in \cs{ensuremath}, so \cs{zfrac} is safe in text, inline and display mode to contain math symbols (\eg{} Greek letters, radicals). It has no package options.
+\macroDescription{\zlim}
+The \cs{zlim} utility typesets the operator \texttt{lim} with the script \macroMeta{var}$\,\to\,$\macroMeta{limit} built from its two arguments. Without a leading \macroPlus, the script is centred below the operator in every math style; with it, the script hangs to the lower right of the operator, like a subscript, which is the compact choice inline. One-sided limits are written in \macroMeta{limit} itself, \eg $0^{+}$. The output is a single box whose height and depth encompass the operator and its script, so adjacent lines are pushed apart. The output is wrapped in \cs{ensuremath}, so it is safe in text, inline and display mode. Its options are listed in Table~\ref{tb:zlim}.
 
 \begin{syntax}
-  \cs{zfrac}\macroStar\macroStar\macroOpt{num}\macroArg{num}\macroOpt{den}\macroArg{den}
+  \cs{zlim}\macroPlus\macroStar\macroArg{var}\macroStar\macroArg{limit}
 \end{syntax}
 
-Starring:
+Starring and optional arguments:
 \begin{itemize}[nosep]
-  \item \textbf{none (-)} — standard \cs{frac} layout.
-  \item \textbf{one (\macroStar)} — oblique \cs{nicefrac} layout, suited to inline use.
-  \item \textbf{two (\macroStar\macroStar)} — slash notation, \macroMeta{num}\texttt{/}\macroMeta{den}.
+  \item \textbf{none (-)} — script centred below the operator;
+  \item \textbf{plus (\macroPlus)} — script hanging to the lower right of the operator;
+  \item a \macroStar\ immediately before \macroMeta{var} or \macroMeta{limit} scales that part in its normal (script) size, but additionally scales it by \opt{zlim-scale-}\macroMeta{style}, where \macroMeta{style} is the math style of the operator (see \opt{zlim-scale-absolute}); the two parts are scaled independently.
 \end{itemize}
 
-Each argument may be given in braces (\macroArg{x}, plain) or in brackets (\macroOpt{x}, parenthesised, \ie{} wrapped in \cs{left(}\,\ldots\,\cs{right)}). The two delimiter choices are independent, so \eg{} only the denominator may be parenthesised while the numerator is left plain. The following table lists every delimiter combination, with some accompanying examples below:
+\begin{macroTable}[Option & Math & Text & Description]{tb:zlim}{Options for \cs{zlim}. The \macroMeta{mode} is \opt{math} (display style) or \opt{text} (text, script and scriptscript style).}
 
-\begin{macroTable*}[2]
-    \cs{zfrac}\texttt{\{n\}\{d\}}
-        & \macroDisp{ \zfrac{n}{d} }
-        & \macroDisp*{ \zfrac{n}{d} }
-        & plain numerator, plain denominator
+    \macroRow{Starred Parts}
+    \opt{zlim-scale-absolute}
+        & \macroSpan{\optval{lim\@scale\@absolute}}
+        & As \opt{scale-absolute}, for starred parts.
+    \\
+    \opt{zlim-scale-display}
+        & \macroSpan{\optval{lim\@scale\@display}}
+        & Factor by which a starred part is scaled according to an unstarred one, for an operator in display style.
+    \\
+    \opt{zlim-scale-text}
+        & \macroSpan{\optval{lim\@scale\@text}}
+        & As \opt{zlim-scale-display}, for an operator in text style.
+    \\
+    \opt{zlim-scale-script}
+        & \macroSpan{\optval{lim\@scale\@script}}
+        & As \opt{zlim-scale-display}, for an operator in script style.
+    \\
+    \opt{zlim-scale-scriptscript}
+        & \macroSpan{\optval{lim\@scale\@scriptscript}}
+        & As \opt{zlim-scale-display}, for an operator in scriptscript style.
     \\
 
-    \cs{zfrac}\texttt{\{n\}[d]}
-        & \macroDisp{ \zfrac{n}[d] }
-        & \macroDisp*{ \zfrac{n}[d] }
-        & parenthesised denominator
+    \macroRow{Frame}
+    \macroKey{zlim}{before}
+        & \optval{lim\@math\@before} & \optval{lim\@text\@before}
+        & Extra width reserved before the output.
+    \\
+    \macroKey{zlim}{after}
+        & \optval{lim\@math\@after} & \optval{lim\@text\@after}
+        & Extra width reserved after the output. Negative values remove part of the space \TeX\ leaves after an operator.
+    \\
+    \macroKey{zlim}{above}
+        & \optval{lim\@math\@above} & \optval{lim\@text\@above}
+        & Extra height reserved above the output.
+    \\
+    \macroKey{zlim}{below}
+        & \optval{lim\@math\@below} & \optval{lim\@text\@below}
+        & Extra depth reserved below the output.
     \\
 
-    \cs{zfrac}\texttt{[n]\{d\}}
-        & \macroDisp{ \zfrac[n]{d} }
-        & \macroDisp*{ \zfrac[n]{d} }
-        & parenthesised numerator
+    \macroRow{Below Form}
+    \macroKey{zlim}{below-v}
+        & \optval{lim\@math\@below\@v} & \optval{lim\@text\@below\@v}
+        & Operator \emph{bottom} edge to the \emph{top} edge of the script.
+    \\
+    \macroKey{zlim}{below-h}
+        & \optval{lim\@math\@below\@h} & \optval{lim\@text\@below\@h}
+        & Shift of the script from its centred position.
     \\
 
-    \cs{zfrac}\texttt{[n][d]}
-        & \macroDisp{ \zfrac[n][d] }
-        & \macroDisp*{ \zfrac[n][d] }
-        & both parenthesised
+    \macroRow{Subscript Form}
+    \macroKey{zlim}{script-v}
+        & \optval{lim\@math\@script\@v} & \optval{lim\@text\@script\@v}
+        & Operator \emph{bottom} edge to the \emph{top} edge of the script.
     \\
-
-    \cs{zfrac}\texttt{\{d\}}
-        & \macroDisp{ \zfrac{d} }
-        & \macroDisp*{ \zfrac{d} }
-        & single arg $\implies$ numerator = 1
-    \\
-
-    \cs{zfrac}\texttt{[d]}
-        & \macroDisp{ \zfrac[d] }
-        & \macroDisp*{ \zfrac[d] }
-        & parenthesised, with numerator = 1
-    \\
-\end{macroTable*}
-
-\begin{tcblisting}{
-    zmathex,
-    halign lower=center,
-    lefthand width=0.8\linewidth
-  }
-  \zfrac{\alpha}{\beta}                 % standard frac
-  \nl
-  \zfrac*{x}{y}                         % nicefrac
-  \nl
-  \zfrac**{x}{y}                        % slash
-  \nl
-  $\zfrac{\alpha}[\beta+1]$             % parenthesise denominator
-  \nl
-  $\zfrac[\alpha+1]{\beta}$             % parenthesise numerator
-  \nl
-  $\zfrac{\lambda}$                     % inverse
-  \nl
-  $e^{-\zfrac{x}} \ne e^{-\zfrac*{x}}$  % context aware
-\end{tcblisting}
-
-% ------------------------------------------------------------------------------
-\clearpage
-\subsection{\cs{zdiff} — differential or derivative}
-% ------------------------------------------------------------------------------
-
-\macroDescription{\zdiff}
-The \cs{zdiff} utility typesets either a differential or a derivative operator with respect to \macroMeta{var}, optionally raised to a given \macroMeta{order} (default 1). It is compatible with text, inline and display modes, wrapping its output in \cs{ensuremath}. Its options are listed in Table~\ref{tb:zdiff}.
-
-\begin{syntax}
-  \cs{zdiff}\macroPlus\macroStar\macroStar\macroOpt{order}\macroArg{var}
-\end{syntax}
-
-\begin{macroTable}{tb:zdiff}{Options for \cs{zdiff}.}
-
-    \opt{zdiff-math-separation}
-        & \optval{diff\@math\@separation}
-        & Extra kern inserted before ``d'' in differential form when \cs{zdiff} is called with a leading \macroPlus\ in display math style. It is \emph{added} to the thin space that \TeX\ already puts there.
-    \\
-
-    \opt{zdiff-text-separation}
-        & \optval{diff\@text\@separation}
-        & Same as \opt{zdiff-math-separation}, applied automatically instead whenever \cs{zdiff} is typeset in text, script, or scriptscript style.
-    \\
-
-    \opt{zdiff-kern}
-        & \optval{diff\@kern}
-        & Kern inserted after the fraction in derivative form, separating it from the following operand.
+    \macroKey{zlim}{script-h}
+        & \optval{lim\@math\@script\@h} & \optval{lim\@text\@script\@h}
+        & Operator \emph{right} edge to the \emph{left} edge of the script.
     \\
 
 \end{macroTable}
 
-Starring:
-\begin{itemize}[nosep]
-  \item \textbf{none (-)} — differential, $\text{d}^{\macroMeta{order}}\macroMeta{var}$, set as a \cs{mathinner} atom: \TeX\ itself supplies the usual thin space against neighbouring ordinary atoms (\eg{} right after \cs{zarg}) in display and text style, none in script styles, and the regular binary or relation spacing after operators such as \cs{zdot}.
-  \item \textbf{one (\macroStar)} — derivative, as a standard \cs{frac}, followed by a larger space (\opt{zdiff-kern}).
-  \item \textbf{two (\macroStar\macroStar)} — derivative, as an oblique \cs{nicefrac}.
-\end{itemize}
+As in \cs{zscript}, the script is an explicitly positioned box rather than a product of \TeX's limits machinery, so it may overlap the operator. All positions use one Cartesian system ($x$ positive to the right, $y$ positive upward) and are measured from the \emph{edges of the operator} to the \emph{nearest edge} of the script: the vertical position is the $y$ coordinate of the script's top edge, so negative values lower it below the operator, while the horizontal position is the shift from the reference (centred for the below form, the operator's right edge for the subscript form). All values are dimensionless \emph{ratios}, with vertical options (\opt{v}, \opt{above}, \opt{below}) relative to the x-height and horizontal ones (\opt{h}, \opt{before}, \opt{after}) to the quad, both in the operator's math style. A negative \opt{zlim-}\macroMeta{mode}\opt{-after} pulls the following term closer to the operator, \eg{} a derivative.
 
-The following example prints a differential, a higher-order differential, and the two derivative layouts:
-
+The following example compares the two layouts, a one-sided limit, and scaled parts:
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.7\linewidth,
-    halign lower=center,
-  }
-  \zdiff{x}                                 % differential
-  \nl
-  \zdiff[2]{x}                              % differential, order 2
-  \nl
-  $\zdiff*{x}f \ne \zdiff*[2]{x}f$          % derivative, \frac
-  \nl
-  $\zdiff**{x}(f) \ne \zdiff**[2]{x}(f)$    % derivative, \nicefrac
-\end{tcblisting}
-
-A leading \macroPlus, meaningful only in differential form, \emph{adds} a kern before the ``d'' on top of the spacing \TeX\ already provides (\opt{zdiff-math-separation} in display style, \opt{zdiff-text-separation} in text/script/scriptscript style; chosen automatically to match the ambient math style, similarly to \cs{zint}'s math/text split). Use it whenever the differential needs more visual separation from the preceding term than the normal thin space. Because the base spacing is computed by \TeX, the plain form never doubles the space after \cs{zdot}. The following example compares the default spacing after a dot product against an increased spacing for clarity:
-
-\begin{tcblisting}{
-    zmathex,
-    lefthand width=0.6\linewidth,
+    lefthand width=0.65\linewidth,
     halign lower=center,
   }
   \begin{gather*}
-    \int \vec{u} \zdot \zdiff{\vec{A}}        % default
-    \quad \ne \quad
-    \int f\zarg{x,\zprime*{x}} \zdiff+[2]{x}  % spaced
+    \zlim{x}{0}                             % below
+    \zfrac{\sin x}{x} = 1
+    \nl
+    \zlim+{x}{0}                            % subscript
+    \zfrac{\sin x}{x} = 1
+    \nl
+    \zlim{x}{0^+}                           % one-sided limit
+    \zfrac{x} = +\infty
+    \nl[2]
+    \zlim{A}{B} f\zarg{A}
+    \ne
+    \zlim*{A}*{B} f\zarg{A}                 % scaled
   \end{gather*}
 \end{tcblisting}
 
-Leaving the bare form free of extra kerns also keeps it usable as an operand. The following example shows that a hand-built derivative of two differentials reproduces the same spacing as writing the fraction out by hand:
-
+The output box keeps neighbouring lines apart in text and inline math, and the plus keeps the operator compact there; the following example shows a derivative defined as a limit, tightened with a negative \opt{zlim-math-after}:
 \begin{tcblisting}{
     zmathex,
-    lefthand width=0.6\linewidth,
-    halign lower=center,
+    lefthand width=0.65\linewidth,
   }
-  \[
-  \frac{\zdiff{f}}{\zdiff{x}}
-  =
-  \frac{\text{d}f}{\text{d}x}
-  \]
-\end{tcblisting}
-
-% ------------------------------------------------------------------------------
-\clearpage
-\subsection{\cs{zcond} — bar to represent evaluation conditions}
-% ------------------------------------------------------------------------------
-
-\macroDescription{\zcond}
-The \cs{zcond} utility typesets a vertical bar to represent evaluation conditions, with \macroMeta{condition} as a subscript. When \macroMeta{expr} is supplied and no stars are given, the bar auto-sizes via \cs{left.}\,\macroMeta{expr}\,\macroBar{right}, tracking \macroMeta{expr}'s height. Each star instead selects a fixed bar size, in which case \macroMeta{expr} is printed as-is, without \cs{left}/\cs{right} wrapping. It is compatible with text, inline and display modes, wrapping its output in \cs{ensuremath}. It has no package options.
-
-\begin{syntax}
-  \cs{zcond}\macroStar\macroStar\macroStar\macroStar\macroOpt{expr}\macroArg{condition}
-\end{syntax}
-
-Starring:
-\begin{itemize}[nosep]
-  \item \textbf{none (-)} — auto-sized bar.
-  \item \textbf{one (\macroStar)} — fixed \macroBar{big}.
-  \item \textbf{two (\macroStar\macroStar)} — fixed \macroBar{Big}.
-  \item \textbf{three (\macroStar\macroStar\macroStar)} — fixed \macroBar{bigg}.
-  \item \textbf{four (\macroStar\macroStar\macroStar\macroStar)} — fixed \macroBar{Bigg}.
-\end{itemize}
-
-The following example prints the five bar sizes side by side:
-
-\begin{tcblisting}{
-    zmathex,
-    lefthand width=0.7\linewidth,
-    halign lower=center,
+  Previous line, no overlap.\\
+  Below, inline: $\zlim{n}{\infty} a_n$.\\
+  Subscript, inline: $\zlim+{n}{\infty} a_n$.\\
+  Subsequent line, no overlap.
+  \nl[2]
+  {
+    \setkeys{zmath}{zlim-math-after=0.5}
+    \[
+      \zdiff*{x}f = \zlim{h}{0} \zfrac{f\zarg{x+h} - f\zarg{x}}{h}
+    \]
   }
-  \zcond{x=0}\zcond*{x=0}\zcond**{x=0}\zcond***{x=0}\zcond****{x=0}
-\end{tcblisting}
-
-The \macroMeta{condition} subscript is scaled by \cs{zscale} only in the auto-sized (no-star) path; it is printed at full size whenever any star is given. The following example shows the bar after a derivative, with an auto-sized bar around \macroMeta{expr}, and with a fixed-size bar:
-
-\begin{tcblisting}{
-    zmathex,
-    lefthand width=0.7\linewidth,
-    halign lower=center,
-  }
-  $\zdiff**{x}g \zcond{x=0}$         % default size
-  \nl
-  $\zcond[\zdiff*{x}g]{x=0}$         % auto-sized
-  \nl
-  $\zcond**[\zdiff*{x}g]{x=0}$       % fixed \Big|
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
@@ -1494,7 +1681,7 @@ The default vertical distances suit typical limit heights; a visually taller lim
     \zint[0][{+\infty}] \sum_x \zfrac{x} \zdiff+{x}
     \nl
     {
-    \setkeys{zmath}{zint-math-after=-0.5}
+    \setkeys{zmath}{zint-math-after=-0.7}
     \setkeys{zmath}{zint-math-slant-top-v=2.5}
     \zint[0][{+\infty}] \sum_x \zfrac{x} \zdiff+{x}
     }
@@ -1660,20 +1847,20 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
     zmathex,
     lefthand width=0.6\linewidth,
   }
-  If \zprime*{\zvec{r}}\zarg{s} is the tangent
+  If \zprime{\zvec{r}}\zarg{s} is the tangent
   vector with respect to arc length $s$ of curve
-  vector position \zvec{r}:
-  \begin{gather}
-    \zprime*{\zvec{r}} = \zdiff*{s}\zvec{r}
+  vector position \zvec{r}, then:
+  \begin{gather*}
+    \zprime{\zvec{r}} = \zdiff*{s}\zvec{r}
     \quad \implies
     \nl
     L = \zint[0][\ell]
-    \left\| \zprime*{\zvec{r}}\zarg{s} \right\|
-    \zdiff+{s}
-  \end{gather}
+    \left\| \zprime{\zvec{r}}\zarg{s} \right\|
+    \zdiff+{s} \zpunct{.}
+  \end{gather*}
 \end{tcblisting}
 
-\subsection{Scaled differential inside a configurable integral}
+\subsection{Moment of inertia of spherical shell}
 
 \begin{tcblisting}{
     zmathex,
@@ -1701,13 +1888,13 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
     u\zarg{x,t} =
     \zfrac{\sqrt{4\pi\kappa t}}
     \zint[-\infty][{+\infty}]
-    u_0\zarg{\zprime*{x}}
+    u_0\zarg{\zprime{x}}
     \cdot e^{
         -\zfrac
-        {\left( x-\zprime*{x} \right)^2}
+        {\left( x-\zprime{x} \right)^2}
         {4\kappa t}
     }
-    \zdiff+{\zprime*{x}}
+    \zdiff+{\zprime{x}}
     \zpunct{.}
   \end{equation}
 \end{tcblisting}
@@ -1736,7 +1923,7 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
   \item[v1.0 (2025/01/01)] Initial public release.
   \item[] Commands: \cs{zscale}, \cs{zscript} (superseding an earlier, unreleased \texttt{varsubsup} prototype), \cs{zint},
     \cs{zfrac}, \cs{zarg}, \cs{zdiff}, \cs{zpunct}, \cs{zprime},
-    \cs{zvec}, \cs{zmat}, \cs{zline}, \cs{zcond}.
+    \cs{zvec}, \cs{zmat}, \cs{zline}, \cs{zcond}, \cs{zlim}.
 
 \end{description}
 
