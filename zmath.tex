@@ -33,6 +33,7 @@
 }
 \newcommand{\eg}{\textit{e.g.}\xspace}
 \newcommand{\ie}{\textit{i.e.}\xspace}
+\newcommand{\etc}{\textit{etc.}\xspace}
 \newcommand{\pkg}[1]{\textsf{#1}}
 \newcommand{\opt}[1]{\texttt{#1}}
 \newcommand{\macroDescription}[1]{\DescribeMacro{#1}}
@@ -805,6 +806,12 @@ The \cs{zscript} engine attaches up to four independent scripts to a central \ma
 
 \begin{macroTable}[Option & Math & Text & Description]{tb:zscript}{Options for \cs{zscript}. The \macroMeta{mode} is \opt{math} (display style) or \opt{text} (text, script and scriptscript style).}
 
+    \macroRow{Script Font}
+    \opt{zscript-font}
+        & \macroSpan{\cs{symup}}
+        & Macro applied to every script, taking it as its one argument; \cs{symup}, \cs{text} or empty are recommended (see below).
+    \\
+
     \macroRow{Starred Scripts}
     \opt{zscript-scale-absolute}
         & \macroSpan{\optval{script\@scale\@absolute}}
@@ -955,6 +962,55 @@ The following examples show scripts in text and math modes, with and without sca
   Previous line, no overlap.\\
   Tall inline output: \zscript[I][K]{\sum}[J][L]. \\
   Subsequent line, no overlap.
+\end{tcblisting}
+
+% Every script is wrapped in \opt{zscript-font}, by default \cs{text}, so scripts match the expected font for descriptive labels. When a script must be in math font, such as a variable, a Greek letter or a sign, it is written between \texttt{\$}\ldots\texttt{\$} due to the \cs{text} wrapping. The nucleus is never wrapped. The following examples show how to denote a label ("parameter") or a variable ("pressure"), a Greek symbol (ignored in \cs{text}), and a negative exponent:
+% \begin{tcblisting}{
+%     zmathex,
+%     halign lower=center,
+%     lefthand width=0.75\linewidth
+%   }
+%   \zscript{n}[p] $\ne$ \zscript{n}[$p$]             % label vs variable
+%   \nl[0.5]
+%   \begin{gather*}
+%     \zscript{x}[$\alpha$] \ne \zscript{x}[\alpha]   % greek symbol
+%     \nl[0.5]
+%     \zscript{x}[][$-1$] \ne \zscript{x}[][-1]       % minus vs hyphen
+%   \end{gather*}
+% \end{tcblisting}
+
+Every script is wrapped in \opt{zscript-font}, which may be any macro taking one argument (\eg{} \cs{textit}). The nucleus is never wrapped. Three settings for the option are recommended; they differ in usage procedure for each type of script (variables, math symbols, labels, un/signed numbers):
+\begin{itemize}[nosep]
+  \item \cs{symup} (default, compact) — math symbols, digits and signs are allowed and do not require \texttt{\$}\ldots\texttt{\$} wrapping, since the script is already in math mode. Variables must be written as \cs{symit}\macroArg{variable} to not show as text. Some labels must be written \cs{text}\macroArg{label} (since \eg spaces are ignored, hyphens become minus signs, \etc). This is the default because descriptive labels tend to be the most common type of script.
+  \item \cs{text} (standard) — all labels are allowed (with spaces, hyphens, \etc). Variables, math symbols and signs must be wrapped by \texttt{\$}\ldots\texttt{\$}, exactly as inside \cs{text}. This may become cumbersome when scripts tend to show math symbols and signs (\eg exponents).
+  \item empty (plain) — scripts are set in the ambient math alphabet, as plain \TeX\ does, for full control. All labels must be written \cs{text}\macroArg{label}.
+\end{itemize}
+
+The following examples demonstrate the outputs for each recommendation, and comment on what is displayed incorrectly in each application:
+\begin{tcblisting}{
+    zmathex,
+    halign lower=center,
+    lefthand width=0.72\linewidth
+  }
+  \[
+    \zscript[\mu][\symit{p}]{R}[pre\text{-}ion][-1]
+    \ne
+    \zscript[\mu][p]{R}[pre-ion][-1]        % variable, hyphen
+  \]
+  \nl[3]
+  \[
+    \setkeys{zmath}{zscript-font=\text}
+    \zscript[$\mu$][$p$]{R}[pre-ion][$-1$]
+    \ne
+    \zscript[\mu][p]{R}[pre-ion][-1]        % greek, variable, minus
+  \]
+  \nl[3]
+  \[
+    \setkeys{zmath}{zscript-font=}
+    \zscript[\mu][p]{R}[\text{pre-ion}][-1]
+    \ne
+    \zscript[\mu][p]{R}[pre-ion][-1]        % label
+  \]
 \end{tcblisting}
 
 % ------------------------------------------------------------------------------
@@ -1751,7 +1807,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 % ==============================================================================
 
 \subsection{Fundamental theorem of calculus}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1764,7 +1819,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Tensor with four-way scripts and evaluation bar}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1778,7 +1832,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Divergence theorem}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1794,7 +1847,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Multi-dimensional integration}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1812,7 +1864,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Gaussian integral}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1825,7 +1876,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Circulation of a vector field}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1842,7 +1892,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Arc length of a parametrised curve}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1861,7 +1910,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Moment of inertia of spherical shell}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.6\linewidth,
@@ -1875,7 +1923,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Heat equation solution}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.45\linewidth,
@@ -1900,7 +1947,6 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \end{tcblisting}
 
 \subsection{Beer--Lambert law}
-
 \begin{tcblisting}{
     zmathex,
     lefthand width=0.62\linewidth,

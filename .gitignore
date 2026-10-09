@@ -1,2 +1,9 @@
 # Compilation files
 /tmp-latexmk/
+
+# l3build output
+/build/
+/*.zip
+
+# macOS
+.DS_Store

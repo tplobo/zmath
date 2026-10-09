@@ -763,6 +763,18 @@
 % LL and superscript UL, and trailing subscript LR and superscript UR.
 % Omitting an argument suppresses it. Safe in text, inline, and display mode.
 %
+% Every script is wrapped in the macro `zscript-font` when it is stored. The
+% option is mode-free and takes any macro accepting one argument, but three
+% settings are recommended, each with its own caveats:
+%   \symup  (default) math letters, Greek letters, digits and signs are typed
+%           as they are and set upright; a variable needs \symit{...}, and a
+%           label with spaces or hyphens needs \text{...}.
+%   \text   labels are typed as they are; a variable, Greek letter or sign
+%           needs $...$.
+%   (empty) scripts are set in the ambient math alphabet, as plain TeX would;
+%           a label needs \text{...}.
+% The nucleus is never wrapped.
+%
 % Scripts are boxes placed explicitly, never by TeX's script machinery, so
 % they are free to overlap the nucleus. An unstarred script is set one style
 % smaller than the nucleus. A star before a script additionally scales it by
@@ -788,8 +800,8 @@
 %   script  ul | ur | ll | lr
 %   axis    v (vertical) | h (horizontal)
 % and zscript-<mode>-<before|after|above|below> for the frame. Every key
-% exists for both modes. The scales zscript-scale-<style> and the switch
-% zscript-scale-absolute are mode-free.
+% exists for both modes. The scales zscript-scale-<style>, the switch
+% zscript-scale-absolute and the font zscript-font are mode-free.
 %
 % Coordinates: x positive to the right, y positive upward.
 %   ur, ul  v = y of the script's BOTTOM edge, from the nucleus TOP edge.
@@ -805,8 +817,9 @@
 % height. The box is wrapped in \mathord OUTSIDE the \mathchoice: a script
 % after a bare \mathchoice would otherwise attach to an empty atom.
 %
-%   \zscript[i][2]{A}             % trailing sub/sup, unscaled
-%   \zscript*[I]*[K]{M}*[J]*[L]   % all four scripts, scaled
+%   \zscript[i][2]{A}                  % trailing sub/sup, unscaled
+%   \zscript*[I]*[K]{M}*[J]*[L]        % all four scripts, scaled
+%   \zscript[\mu][\symit{p}]{R}[\text{pre-ion}][-1]   % one of each kind
 % ==============================================================================
 
   % \zmath@script@opt {key suffix} {macro suffix} {default} — declares the
@@ -849,6 +862,7 @@
   \zmath@script@opt{scale-script}{scale@script}{0.55}
   \zmath@script@opt{scale-scriptscript}{scale@scriptscript}{0.5}
   \zmath@script@opt{scale-absolute}{scale@absolute}{true}
+  \zmath@script@opt{font}{font}{\symup}
 
 \ExplSyntaxOn
 
@@ -877,13 +891,15 @@
   \cs_new:Npn \__zmath_script_opt:n #1
     { \use:c { zmath@script@ \l__zmath_script_mode_tl @ #1 } }
 
-  % stores script #3 and its star flag #2 under key #1; blank = absent
+  % stores script #3 and its star flag #2 under key #1, wrapped in the macro
+  % zscript-font (none if empty), expanded now; blank = absent
   \cs_new_protected:Npn \__zmath_script_store:nnn #1#2#3
     {
       \tl_clear:c { l__zmath_script_ #1 _tl }
       \tl_if_blank:nF {#3}
         {
-          \tl_set:cn  { l__zmath_script_ #1 _tl } {#3}
+          \tl_set:cn   { l__zmath_script_ #1 _tl } { {#3} }
+          \tl_put_left:cV { l__zmath_script_ #1 _tl } \zmath@script@font
           \bool_set:cn { l__zmath_script_ #1 _star_bool } {#2}
         }
     }
