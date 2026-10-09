@@ -1,4 +1,25 @@
 %!TEX engine = lualatex
+
+% ##############################################################################
+% zmath.tex — manual of the zmath package
+%
+% Copyright (C) 2025-2026 Tiago Pomella Lobo
+% LPPL 1.3c or later, author-maintained; see zmath.sty for the full notice.
+%
+% Compiling (LuaLaTeX or XeLaTeX, required by unicode-math; no -shell-escape):
+%   lualatex zmath
+%   makeindex -s gind.ist zmath.idx   % gind.ist is required (\CodelineIndex)
+%   lualatex zmath
+%   lualatex zmath                    % final pass: contents, references, index
+% or `l3build doc`, or `latexmk -lualatex zmath` with this line in a latexmkrc:
+%   $makeindex = 'makeindex -s gind.ist %O -o %D %S';
+%
+% Notes:
+%   - zmath.sty and zmath-listings.tex must be found by TeX (same folder, or
+%     installed). zmath-listings.tex only styles the example boxes.
+%   - \RecordChanges writes zmath.glo, which is unused: the change history is
+%     typed by hand, so no glossary pass is needed.
+% ##############################################################################
 \documentclass[a4paper]{ltxdoc}
 
 \usepackage{zmath}
@@ -147,7 +168,7 @@
 \title{The \pkg{zmath} Package\\[4pt]
        \large Smart Math Typesetting Utilities}
 \author{Tiago Pomella Lobo}
-\date{\today\quad v1.0}
+\date{\today\quad v1.0.0}
 \maketitle
 
 \begin{abstract}
@@ -199,6 +220,12 @@ Required packages loaded automatically: \pkg{amsmath}, \pkg{unicode-math}, \pkg{
 % ------------------------------------------------------------------------------
 
 The local macro \cs{nl} is used to add line breaks in the example boxes, so it has been colored grey to reduce visual impact. The environment \texttt{macroTable} typesets the captioned option table that follows the syntax of each command, with the columns "Option", "Default" and "Description" unless other headers are given as its optional argument. Every option's key name is prefixed with the full public command name it belongs to (\eg{} \opt{zint-}, \opt{zdiff-}), so key names are unambiguous even when taken out of context. The starred form \texttt{macroTable*} typesets example tables with the columns "Source", "Output" and "Meaning", and only needs the rows. 
+
+% ------------------------------------------------------------------------------
+\subsection{License and support}
+% ------------------------------------------------------------------------------
+
+Copyright \textcopyright{} 2020--2026 Tiago Pomella Lobo. This work may be distributed and/or modified under the conditions of the \LaTeX\ Project Public License, version 1.3c or later (\url{https://www.latex-project.org/lppl.txt}), and has the maintenance status ``author-maintained''. Source code, issues and releases: \url{https://github.com/tplobo/zmath}.
 
 % ==============================================================================
 \section{User Interface}
@@ -963,21 +990,6 @@ The following examples show scripts in text and math modes, with and without sca
   Tall inline output: \zscript[I][K]{\sum}[J][L]. \\
   Subsequent line, no overlap.
 \end{tcblisting}
-
-% Every script is wrapped in \opt{zscript-font}, by default \cs{text}, so scripts match the expected font for descriptive labels. When a script must be in math font, such as a variable, a Greek letter or a sign, it is written between \texttt{\$}\ldots\texttt{\$} due to the \cs{text} wrapping. The nucleus is never wrapped. The following examples show how to denote a label ("parameter") or a variable ("pressure"), a Greek symbol (ignored in \cs{text}), and a negative exponent:
-% \begin{tcblisting}{
-%     zmathex,
-%     halign lower=center,
-%     lefthand width=0.75\linewidth
-%   }
-%   \zscript{n}[p] $\ne$ \zscript{n}[$p$]             % label vs variable
-%   \nl[0.5]
-%   \begin{gather*}
-%     \zscript{x}[$\alpha$] \ne \zscript{x}[\alpha]   % greek symbol
-%     \nl[0.5]
-%     \zscript{x}[][$-1$] \ne \zscript{x}[][-1]       % minus vs hyphen
-%   \end{gather*}
-% \end{tcblisting}
 
 Every script is wrapped in \opt{zscript-font}, which may be any macro taking one argument (\eg{} \cs{textit}). The nucleus is never wrapped. Three settings for the option are recommended; they differ in usage procedure for each type of script (variables, math symbols, labels, un/signed numbers):
 \begin{itemize}[nosep]

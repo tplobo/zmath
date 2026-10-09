@@ -14,12 +14,12 @@ end
 local pkgversion = read("zmath.sty"):match("\\ProvidesPackage{zmath}%[%d+/%d+/%d+ v([%d%.]+)")
 assert(pkgversion, "cannot read the version from \\ProvidesPackage in zmath.sty")
 
-sourcefiles  = {"zmath.sty"}                                 -- no .dtx/.ins: the .sty is the source
-unpackfiles  = {}                                            -- nothing to extract
-typesetfiles = {"zmath.tex"}                                 -- the manual
-docfiles     = {"zmath-listings.tex", "zmath-minted.tex"}    -- files the manual \input's
+sourcefiles  = {"zmath.sty"}                 -- no .dtx/.ins: the .sty is the source
+unpackfiles  = {}                            -- nothing to extract
+typesetfiles = {"zmath.tex"}                 -- the manual
+docfiles     = {"zmath-listings.tex"}        -- file the manual \input's
 textfiles    = {"README.md", "LICENSE*"}
-typesetexe   = "lualatex"                                    -- unicode-math needs LuaTeX or XeTeX
+typesetexe   = "lualatex"                    -- unicode-math needs LuaTeX or XeTeX
 tagfiles     = {"zmath.sty", "zmath.tex"}
 
 -- `l3build tag v1.2.3` updates version and date in the .sty and the manual title
@@ -41,8 +41,9 @@ uploadconfig = {
   version      = pkgversion,
   author       = "Tiago Pomella Lobo",
   uploader     = "Tiago Pomella Lobo",
-  email        = os.getenv("CTAN_EMAIL"),    -- never hard-coded in a public repo
-  license      = "nocommercial",             -- see the license discussion; e.g. "lppl1.3c" otherwise
+  maintainer   = "Tiago Pomella Lobo",
+  email        = os.getenv("CTAN_EMAIL"),
+  license      = "lppl1.3c",
   summary      = "Smart math typesetting utilities for LuaLaTeX and XeLaTeX",
   description  = [[zmath collects configurable math typesetting commands: integrals with flexible limit placement (\zint), fractions (\zfrac), four-way scripts (\zscript), primes (\zprime), limits (\zlim), differentials and derivatives (\zdiff), scaled function arguments (\zarg), vector and matrix underlines (\zline, \zvec, \zmat), evaluation bars (\zcond), a dot-product operator (\zdot), uniform scaling (\zscale) and equation punctuation (\zpunct). Every tunable parameter is a package option.]],
   topic        = {"maths"},

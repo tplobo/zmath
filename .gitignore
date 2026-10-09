@@ -1,9 +1,10 @@
 # Compilation files
 /tmp-latexmk/
 
-# l3build output
+# l3build output (build/ tree, CTAN zip, manual copied to the root)
 /build/
 /*.zip
+/*.pdf
 
 # macOS
 .DS_Store
