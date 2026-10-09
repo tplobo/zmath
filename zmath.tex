@@ -1964,12 +1964,91 @@ With two stars before \macroMeta{type}, the \opt{right} class is applied for a m
 \section{Change History}
 % ==============================================================================
 
-\begin{description}
+\begin{description}[style=nextline, leftmargin=2cm, labelwidth=!]
 
-  \item[v1.0 (2025/01/01)] Initial public release.
-  \item[] Commands: \cs{zscale}, \cs{zscript} (superseding an earlier, unreleased \texttt{varsubsup} prototype), \cs{zint},
-    \cs{zfrac}, \cs{zarg}, \cs{zdiff}, \cs{zpunct}, \cs{zprime},
-    \cs{zvec}, \cs{zmat}, \cs{zline}, \cs{zcond}, \cs{zlim}.
+  \item[v1.0.0 (2026/10/09)] Initial public release. Every command was rewritten on a common footing and shared naming convenction (\cs{z...}). New commands added.
+    \begin{itemize}[nosep]
+
+      \item \textbf{All commands.} Every tunable constant is now a key--value option, read at call time and settable globally or locally with \cs{setkeys}, replacing fixed constants and hard-coded kerns. All commands are safe in text, inline and display mode, and adapt to the math style of the call.
+      
+      \item \textbf{Scaling.} Scaling follows the math style of the call through one shared mechanism with four factors per command (display, text, script, scriptscript), an absolute or relative reading of these factors, and a guard that stops nested scaled content from shrinking below scriptscript size.
+      
+      \item \textbf{Positions.} Distances are dimensionless ratios of the x-height and quad of the style, so one setting stays valid in exponents. Commands that place parts explicitly return a single box whose height and depth cover all of them, so neighbouring lines no longer collide.
+      
+      \item \cs{zpunct} (supersedes \cs{eqpunct}): works both in unstarred and starred environments through \cs{tag*}, and discards the punctuation on \cs{notag}/\cs{nonumber} rows so it cannot leak into a later number or \cs{eqref}.
+      
+      \item \cs{zfrac}: the layout is now always wrapped in \cs{ensuremath}, so operands may contain math even when called from text, and parentheses are always \cs{left}\,\cs{right} delimiters; the text-mode \cs{mbox} workaround is gone.
+      
+      \item \cs{zscale}: the single fixed factor became four per-style factors, with the absolute/relative switch and the nesting guard above.
+      
+      \item \cs{zdiff} (supersedes \cs{diff}): the differential is a \cs{mathinner} atom, so \TeX\ supplies the spacing instead of a fixed \texttt{10mu} kern, which also removes double spacing after operators such as \cs{zdot}; a leading \macroPlus\ adds extra separation, chosen by math style, and the derivative kern is an option.
+      
+      \item \cs{zscript}: the four scripts are explicitly placed boxes with per-style, per-mode ratio options instead of \TeX's script machinery, so they may overlap the nucleus; a star scales a script by the style factors; and every script is wrapped in the new \opt{zscript-font} option, by default \cs{symup}.
+      
+      \item \cs{zprime} (supersedes \cs{primed}): primes scale with the math style of the symbol, so they are safe in exponents; the accent form is placed explicitly rather than through \cs{accentset}, with the cluster centred as a group; the vertical and horizontal positions are options, replaceable per call, instead of a single manual \cs{raisebox} offset; and the output box covers symbol and primes, so \cs{left}/\cs{right} and later scripts see the true height, replacing the \cs{vphantom} and \cs{smash} workarounds.
+      
+      \item \cs{zint}: the display and inline constants were merged into options for two modes and three placement classes (\opt{slant}, \opt{stack}, \opt{right}), selected by zero, one or two stars before the type; limits are always explicit boxes with independent anchors, so one geometry serves all types; and the frame (\opt{before}, \opt{after}, \opt{above}, \opt{below}) and the cluster kerns are options.
+      
+      \item New commands: \cs{zline} (with \cs{zvec} and \cs{zmat}), \cs{zdot}, \cs{zarg}, \cs{zcond} and \cs{zlim}.
+      
+    \end{itemize}
+
+  \item[v0.11.0 (2025)] Flexible fraction incorporated into the package.
+    \begin{itemize}[nosep]
+
+      \item \cs{zfrac}: stars select \cs{frac}, \cs{nicefrac} or slash form; braces or brackets select plain or parenthesised operands; a single argument is the denominator. Math or text mode is detected at the call site.
+    
+    \end{itemize}
+
+  \item[v0.10.0 (2022-2025)] Single macro for integrals with slant/stack limits.
+    \begin{itemize}[nosep]
+
+      \item \cs{zint}: single, multiple, closed-path and bridged integrals, with "side" or "stack" limits (one star before the type) chosen separately for display and inline style, using named spacing constants.
+    
+    \end{itemize}
+
+  \item[v0.9.0 (2023-2025)] First consolidated package for personal use.
+    \begin{itemize}[nosep]
+
+      \item Shared scale coefficient.
+      
+      \item \cs{zscale}: uniform scaling of math content.
+      
+      \item \cs{zscript} (supersedes \cs{varsubsup}): pre- and post-scripts, with optional scaling per script by starring (rather than suppressed scaling, as in \cs{varsubsup})
+    
+    \end{itemize}
+
+  \item[v0.8.0 (2024-2025)] Single macro for sub/superscripts.
+    \begin{itemize}[nosep]
+      
+      \item \cs{varsubsup}: shorthand for trailing scripts, scaled by default.
+    
+    \end{itemize}
+
+  \item[v0.7.0 (2021-2024)] Single macro for prime marks as accent or superscripts.
+    \begin{itemize}[nosep]
+      
+      \item \cs{primed}: prime accent via \cs{accentset}, or \cs{superscript}; optional number of primes and manual height offset.
+    
+    \end{itemize}
+
+  \item[v0.6.0 (2020-2023)] Single macro for differentials and derivatives.
+    \begin{itemize}[nosep]
+      
+      \item \cs{diff}: differential or derivative, with one star (\cs{frac}) or two (\cs{nicefrac}), with an optional order and fixed kerns around the output.
+    
+    \end{itemize}
+
+  \item[v0.5.0 (2020-2022)] Equation punctuation for numbered equations. Shortcut for function arguments.
+    \begin{itemize}[nosep]
+      
+      \item \cs{eqpunct}: adds punctuation mark to numbered equations through a redefined \cs{tagform@} hook.
+      
+      \item \cs{arg}: automatic \cs{left(}/\cs{right)} wrapping of arguments for functions.
+    
+    \end{itemize}
+
+  \item[v0.0.0-v0.4.0] \ldots
 
 \end{description}
 
